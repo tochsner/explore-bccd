@@ -18,12 +18,6 @@ class WorkerAPI {
 
 				case 'buildBCCD':
 					return this.buildBCCD();
-
-				case 'getBCCD':
-					return this.getBCCD();
-
-				case 'getSummaryTree':
-					return this.getSummaryTree();
 			}
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
@@ -33,11 +27,13 @@ class WorkerAPI {
 
 	private parsePosteriorTrees(content: string): TreeWorkerResponse {
 		this.posteriorTrees = readTreesFromNexus(content);
+		this.posteriorTrees.forEach((tree) => tree.computeNodeHeights());
 		return { success: true };
 	}
 
 	private parseSummaryTree(content: string): TreeWorkerResponse {
 		this.summaryTree = readNexus(content);
+		this.summaryTree.computeNodeHeights();
 		return { success: true };
 	}
 
@@ -47,21 +43,10 @@ class WorkerAPI {
 		}
 
 		this.bccd = new BCCD(this.posteriorTrees);
+
+		console.log(this.bccd);
+
 		return { success: true };
-	}
-
-	private getBCCD(): TreeWorkerResponse {
-		if (!this.bccd) {
-			return { success: false, error: 'BCCD has not been built yet.' };
-		}
-		return { success: true, bccd: this.bccd };
-	}
-
-	private getSummaryTree(): TreeWorkerResponse {
-		if (!this.summaryTree) {
-			return { success: false, error: 'Summary tree has not been loaded yet.' };
-		}
-		return { success: true, summaryTree: this.summaryTree };
 	}
 }
 

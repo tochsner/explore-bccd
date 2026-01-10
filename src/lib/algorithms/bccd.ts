@@ -1,7 +1,9 @@
 import type { Node, Tree } from 'phylojs';
-import { getAllNodeLabels, getNodeLabel } from './treeUtils';
-import { union, type Clade, type Leaf } from './clade';
+import { getAllNodeLabels, getNodeHeight, getNodeLabel, getTreeHeight } from './treeUtils';
+import { isRoot, union, type Clade, type Leaf } from './clade';
 import { buildCladeSplit, type CladeSplit } from './cladeSplit';
+import { logNormalMLE, type LogNormalParameters } from './logNormalDistribution';
+import { betaMLE, type BetaParameters } from './betaDistribution';
 
 export class BCCD {
 	numTaxa: number;
@@ -17,6 +19,13 @@ export class BCCD {
 
 	numCladeOccurrences: Map<number, number>;
 	numSplitOccurrences: Map<number, number>;
+
+	observedTreeHeights: number[];
+	observedSplitRatios: Map<number, number[]>;
+
+	treeHeightDistribution!: LogNormalParameters;
+	splitRatioDistributions!: Map<number, BetaParameters>;
+	globalSplitRatioDistribution!: BetaParameters;
 
 	constructor(trees: Tree[]) {
 		if (trees.length === 0) {
@@ -34,6 +43,9 @@ export class BCCD {
 		this.numSplitOccurrences = new Map();
 		this.splitsPerClade = new Map();
 
+		this.observedTreeHeights = [];
+		this.observedSplitRatios = new Map();
+
 		// create random tip fingerprints
 
 		this.leafFingerprints = new Map(
@@ -45,6 +57,9 @@ export class BCCD {
 		for (const tree of trees) {
 			this.rootClade = this.cladifyTree(tree, tree.root);
 		}
+
+		// fit the branch embedding distribution
+		this.fitHeightShorterBranchModel();
 	}
 
 	cladifyTree(tree: Tree, node: Node): Clade {
@@ -80,7 +95,7 @@ export class BCCD {
 		this.observeClade(clade);
 
 		const cladeSplit = buildCladeSplit(clade, leftClade, rightClade);
-		this.observeCladeSplit(cladeSplit);
+		this.observeCladeSplit(cladeSplit, node, tree);
 
 		return clade;
 	}
@@ -90,6 +105,7 @@ export class BCCD {
 		if (existingClade) {
 			// ensure everything is correct and this is the same clade
 			if (clade.size !== this.clades.get(clade.fingerprint)?.size) {
+				console.error(clade, existingClade);
 				throw new Error(
 					`Duplicate clades with the same fingerprint found. This should not happen.`
 				);
@@ -102,12 +118,9 @@ export class BCCD {
 		this.numCladeOccurrences.set(clade.fingerprint, numOccurrences + 1);
 	}
 
-	observeCladeSplit(cladeSplit: {
-		fingerprint: number;
-		parent: Clade;
-		clade1: Clade;
-		clade2: Clade;
-	}) {
+	observeCladeSplit(cladeSplit: CladeSplit, node: Node, tree: Tree) {
+		// add split
+
 		const existingCladeSplit = this.splits?.get(cladeSplit.fingerprint);
 		if (existingCladeSplit) {
 			// ensure this is the same clade split by parent fingerprint and children
@@ -116,7 +129,7 @@ export class BCCD {
 				cladeSplit.clade1.fingerprint !== existingCladeSplit.clade1.fingerprint ||
 				cladeSplit.clade2.fingerprint !== existingCladeSplit.clade2.fingerprint
 			) {
-				console.log(cladeSplit, existingCladeSplit);
+				console.error(cladeSplit, existingCladeSplit);
 				throw new Error(
 					`Duplicate clade splits with the same fingerprint found. This should not happen.`
 				);
@@ -125,7 +138,66 @@ export class BCCD {
 			this.splits.set(cladeSplit.fingerprint, cladeSplit);
 		}
 
+		if (!this.splitsPerClade.has(cladeSplit.parent.fingerprint)) {
+			this.splitsPerClade.set(cladeSplit.parent.fingerprint, new Set());
+		}
+		this.splitsPerClade.get(cladeSplit.parent.fingerprint)?.add(cladeSplit);
+
+		// increase number of occurrences
+
 		const numOccurrences = this.numSplitOccurrences.get(cladeSplit.fingerprint) || 0;
 		this.numSplitOccurrences.set(cladeSplit.fingerprint, numOccurrences + 1);
+
+		// update branch embedding information
+
+		if (isRoot(cladeSplit.parent)) {
+			const treeHeight = getTreeHeight(tree);
+			this.observedTreeHeights.push(treeHeight);
+		} else {
+			const treeHeight = getTreeHeight(tree);
+			const nodeHeight = getNodeHeight(node, tree);
+			const olderChildHeight = Math.max(
+				...node.children.map((child) => getNodeHeight(child, tree))
+			);
+
+			const ratio = (nodeHeight - olderChildHeight) / (treeHeight - olderChildHeight);
+
+			if (!this.observedSplitRatios.has(cladeSplit.fingerprint)) {
+				this.observedSplitRatios.set(cladeSplit.fingerprint, []);
+			}
+			this.observedSplitRatios.get(cladeSplit.fingerprint)?.push(ratio);
+		}
+	}
+
+	fitHeightShorterBranchModel() {
+		// fit height model
+
+		this.treeHeightDistribution = logNormalMLE(this.observedTreeHeights);
+
+		// fit global ratio model
+
+		const allRatios = this.observedSplitRatios
+			.values()
+			.flatMap((x) => x)
+			.toArray();
+
+		this.globalSplitRatioDistribution = betaMLE(allRatios);
+
+		// fit ratio models
+
+		this.splitRatioDistributions = new Map();
+
+		for (const [fingerprint, split] of this.splits) {
+			if (isRoot(split.parent)) continue;
+
+			const observedRatios = this.observedSplitRatios.get(fingerprint) || [];
+
+			if (observedRatios.length < 5) {
+				this.splitRatioDistributions.set(fingerprint, this.globalSplitRatioDistribution);
+			} else {
+				const betaParameters = betaMLE(observedRatios);
+				this.splitRatioDistributions.set(fingerprint, betaParameters);
+			}
+		}
 	}
 }

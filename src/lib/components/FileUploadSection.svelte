@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { TreeWorkerResponse } from '$lib/workers/messages';
+	import Spinner from './Spinner.svelte';
 
 	let {
 		worker,
@@ -77,19 +78,7 @@
 	>
 		<label class="flex w-full cursor-pointer flex-col items-center gap-6">
 			{#if isLoadingPosterior}
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					viewBox="0 0 24 24"
-					fill="none"
-					stroke="currentColor"
-					stroke-width="2"
-					stroke-linecap="round"
-					stroke-linejoin="round"
-					class="size-16 animate-spin"
-				>
-					<path stroke="none" d="M0 0h24v24H0z" fill="none" />
-					<path d="M12 3a9 9 0 1 0 9 9" />
-				</svg>
+				<Spinner />
 				<span class="mb-2 text-center text-lg">Loading and parsing trees...</span>
 			{:else if !posteriorTreesLoaded}
 				<svg
@@ -141,19 +130,7 @@
 	>
 		<label class="flex w-full cursor-pointer flex-col items-center gap-6">
 			{#if isLoadingSummary}
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					viewBox="0 0 24 24"
-					fill="none"
-					stroke="currentColor"
-					stroke-width="2"
-					stroke-linecap="round"
-					stroke-linejoin="round"
-					class="size-16 animate-spin"
-				>
-					<path stroke="none" d="M0 0h24v24H0z" fill="none" />
-					<path d="M12 3a9 9 0 1 0 9 9" />
-				</svg>
+				<Spinner />
 				<span class="mb-2 text-center text-lg">Loading and parsing tree...</span>
 			{:else if !summaryTreeLoaded}
 				<svg
@@ -172,7 +149,7 @@
 					<path d="M12 4l0 12" />
 				</svg>
 				<span class="mb-2 text-center text-lg"
-					>2. Upload your topology summary tree (.trees or .nxs)</span
+					>2. Upload your topology summary tree (.trees)</span
 				>
 			{:else}
 				<svg
@@ -194,7 +171,7 @@
 
 			<input
 				type="file"
-				accept=".trees,.nxs"
+				accept=".trees"
 				hidden
 				onchange={handleSummaryTreeUpload}
 				disabled={isLoadingSummary}

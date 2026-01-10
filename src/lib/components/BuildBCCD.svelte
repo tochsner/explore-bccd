@@ -1,13 +1,15 @@
 <script lang="ts">
-	import type { TreeWorkerResponse } from '$lib/workers/messages';
+	import type { BuiltBCCDResponse, ErrorResponse, TreeWorkerResponse } from '$lib/workers/messages';
 	import Spinner from './Spinner.svelte';
 
 	let {
 		worker,
-		bccdBuilt = $bindable()
+		bccdBuilt = $bindable(),
+		pointEstimateNewick = $bindable()
 	}: {
 		worker: Worker;
 		bccdBuilt: boolean;
+		pointEstimateNewick: string;
 	} = $props();
 
 	let isBuilding = $state(true);
@@ -15,10 +17,11 @@
 
 	// trigger BCCD building when component mounts
 	$effect(() => {
-		const handler = (e: MessageEvent<TreeWorkerResponse>) => {
+		const handler = (e: MessageEvent<ErrorResponse | BuiltBCCDResponse>) => {
 			if (e.data.success) {
 				bccdBuilt = true;
 				isBuilding = false;
+				pointEstimateNewick = e.data.pointEstimateNewick;
 			} else {
 				error = e.data.error;
 				isBuilding = false;

@@ -35,6 +35,12 @@
 		"vite": "^7.2.6"
 	},
 	"dependencies": {
+		"@stdlib/math": "^0.3.3",
+		"@stdlib/random": "^0.3.3",
+		"@stdlib/stats": "^0.3.3",
+		"fmin": "^0.0.4",
+		"install": "^0.13.0",
+		"npm": "^11.7.0",
 		"phylojs": "^1.12.0"
 	}
 }

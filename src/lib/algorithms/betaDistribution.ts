@@ -1,12 +1,27 @@
 import digamma from '@stdlib/math/base/special/digamma';
 import mean from '@stdlib/stats/base/mean';
 import variance from '@stdlib/stats/base/variance';
+import { logpdf } from '@stdlib/stats/base/dists/beta';
 import { nelderMead } from 'fmin';
 
 export type BetaParameters = {
 	alpha: number;
 	beta: number;
 };
+
+export function betaLogDensity(x: number, { alpha, beta }: BetaParameters) {
+	return logpdf(x, alpha, beta);
+}
+
+export function betaPointEstimate({ alpha, beta }: BetaParameters) {
+	if (alpha <= 1.0 || beta <= 1.0) {
+		// there is no real mode
+		// we return the expectation
+		return alpha / (alpha + beta);
+	} else {
+		return (alpha - 1) / (alpha + beta - 2);
+	}
+}
 
 /**
  * Fits beta distribution parameters using Maximum Likelihood Estimation.

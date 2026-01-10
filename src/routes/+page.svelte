@@ -8,6 +8,8 @@
 	let posteriorTreesLoaded = $state(false);
 	let summaryTreeLoaded = $state(false);
 	let bccdBuilt = $state(false);
+	
+    let pointEstimateNewick = $state("");
 
 	let stage = $derived.by(() => {
 		if (!posteriorTreesLoaded || !summaryTreeLoaded) return 'loadTrees';
@@ -35,10 +37,11 @@
 
 		<FileUploadSection {worker} bind:posteriorTreesLoaded bind:summaryTreeLoaded />
 	{:else if stage == 'buildModel'}
-		<BuildBCCD {worker} bind:bccdBuilt />
+		<BuildBCCD {worker} bind:bccdBuilt bind:pointEstimateNewick />
 	{:else if stage == 'explore'}
 		<div class="mt-32 flex h-full w-full flex-col items-center justify-center gap-8">
 			<span class="text-center text-lg">BCCD built successfully! Ready to explore.</span>
+            {pointEstimateNewick}
 		</div>
 	{/if}
 {/if}

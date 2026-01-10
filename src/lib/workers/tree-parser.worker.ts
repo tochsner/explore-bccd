@@ -1,11 +1,13 @@
-import { readTreesFromNexus, readNexus, Tree } from 'phylojs';
+import { readTreesFromNexus, readNexus, Tree, writeNewick } from 'phylojs';
 import { BCCD } from '$lib/algorithms/bccd';
 import type { TreeWorkerMessage, TreeWorkerResponse } from './messages';
+import { BCCDPointEstimator } from '$lib/algorithms/pointEstimate';
 
 class WorkerAPI {
 	private posteriorTrees: Tree[] | null = null;
 	private summaryTree: Tree | null = null;
 	private bccd: BCCD | null = null;
+	private pointEstimate: Tree | null = null;
 
 	handleMessage(message: TreeWorkerMessage): TreeWorkerResponse {
 		try {
@@ -43,10 +45,10 @@ class WorkerAPI {
 		}
 
 		this.bccd = new BCCD(this.posteriorTrees);
+		this.pointEstimate = new BCCDPointEstimator(this.bccd).buildPointEstimate();
+		const pointEstimateNewick = writeNewick(this.pointEstimate);
 
-		console.log(this.bccd);
-
-		return { success: true };
+		return { success: true, pointEstimateNewick };
 	}
 }
 

@@ -1,3 +1,4 @@
+import { logpdf } from '@stdlib/stats/base/dists/lognormal';
 import mean from '@stdlib/stats/base/mean';
 import stdev from '@stdlib/stats/base/stdev';
 
@@ -5,6 +6,14 @@ export type LogNormalParameters = {
 	mu: number;
 	sigma: number;
 };
+
+export function logNormalLogDensity(x: number, { mu, sigma }: LogNormalParameters) {
+	return logpdf(x, mu, sigma);
+}
+
+export function logNormalPointEstimate(parameters: LogNormalParameters) {
+	return Math.exp(parameters.mu - parameters.sigma * parameters.sigma);
+}
 
 /**
  * Fits log-normal distribution parameters using Maximum Likelihood Estimation.
@@ -18,7 +27,7 @@ export function logNormalMLE(observations: number[]): LogNormalParameters {
 	const n = observations.length;
 
 	// transform observations to log-space
-	const logObservations = observations.map(x => Math.log(Math.max(1e-10, x)));
+	const logObservations = observations.map((x) => Math.log(Math.max(1e-10, x)));
 
 	// MLE for mu: mean of log-transformed observations
 	const mu = mean(n, logObservations, 1);

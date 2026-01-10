@@ -30,4 +30,9 @@ export type ErrorResponse = {
 	error: string;
 };
 
-export type TreeWorkerResponse = SuccessResponse | ErrorResponse;
+export type BuiltBCCDResponse = {
+	success: true;
+	pointEstimateNewick: string;
+};
+
+export type TreeWorkerResponse = SuccessResponse | ErrorResponse | BuiltBCCDResponse;

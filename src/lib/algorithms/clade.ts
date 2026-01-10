@@ -17,7 +17,7 @@ export function isRoot(clade: Clade) {
 	return clade.size === clade.totalNumTips;
 }
 
-export function isLeaf(clade: Clade) {
+export function isLeaf(clade: Clade): clade is Leaf {
 	return clade.size === 1;
 }
 

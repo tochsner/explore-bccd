@@ -14,9 +14,9 @@
 
 <div class="bg-background text-dark flex min-h-lvh w-lvw flex-col items-center pt-16 font-sans">
 	<header
-		class="bg-light-gray absolute top-0 right-0 left-0 z-10 flex w-full border-b border-gray-200 p-4"
+		class="bg-accent/10 absolute top-0 right-0 left-0 z-10 flex w-full px-8 py-6 rounded-b-2xl"
 	>
-		<span class="text-accent text-2xl font-bold">BCCD</span>
+		<span class="text-[2rem] font-bold">Explore<span class="text-accent">BCCD</span></span>
 	</header>
 
 	{@render children()}

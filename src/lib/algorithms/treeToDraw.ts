@@ -1,3 +1,5 @@
+import type { Histogram } from './histogram';
+
 export type TreeToDraw = {
 	root: NodeToDraw;
 };
@@ -8,6 +10,7 @@ export type InternalNodeToDraw = {
 	height: number;
 	left: NodeToDraw;
 	right: NodeToDraw;
+	heightDistribution: Histogram;
 };
 
 export type LeafToDraw = {
@@ -36,5 +39,24 @@ export function getOlderChild(node: InternalNodeToDraw) {
 		return node.left;
 	} else {
 		return node.right;
+	}
+}
+
+export function getTreeHeight(tree: TreeToDraw) {
+	return tree.root.height;
+}
+
+export function getLeafLabels(tree: TreeToDraw) {
+	const leafLabels: string[] = [];
+	collectLeafLabels(tree.root, leafLabels);
+	return leafLabels;
+}
+
+function collectLeafLabels(node: NodeToDraw, leafLabels: string[]) {
+	if (node.type === 'leaf') {
+		leafLabels.push(node.label);
+	} else {
+		collectLeafLabels(node.left, leafLabels);
+		collectLeafLabels(node.right, leafLabels);
 	}
 }

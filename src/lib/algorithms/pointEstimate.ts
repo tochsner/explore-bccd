@@ -162,12 +162,12 @@ export class BCCDPointEstimator {
 		}
 
 		// phylojs assigns heights forward in time, we otherwise use heights backwards in time
-		node.height = treeHeight - nodeHeight;
-		child1.height = treeHeight - child1Height;
-		child2.height = treeHeight - child2Height;
+		node.height = treeHeight * (treeHeight - nodeHeight);
+		child1.height = treeHeight * (treeHeight - child1Height);
+		child2.height = treeHeight * (treeHeight - child2Height);
 
-		child1.branchLength = nodeHeight - child1Height;
-		child2.branchLength = nodeHeight - child2Height;
+		child1.branchLength = treeHeight * (nodeHeight - child1Height);
+		child2.branchLength = treeHeight * (nodeHeight - child2Height);
 
 		return node;
 	}

@@ -12,10 +12,8 @@
 	<meta name="robots" content="index,follow" />
 </svelte:head>
 
-<div class="bg-background text-dark flex min-h-lvh w-lvw flex-col items-center pt-16 font-sans">
-	<header
-		class="bg-accent/10 absolute top-0 right-0 left-0 z-10 flex w-full px-8 py-6 rounded-b-2xl"
-	>
+<div class="bg-background text-dark flex min-h-lvh w-lvw flex-col items-center font-sans">
+	<header class="bg-accent/10 z-10 flex w-full rounded-b-2xl px-8 py-6">
 		<span class="text-[2rem] font-bold">Explore<span class="text-accent">BCCD</span></span>
 	</header>
 

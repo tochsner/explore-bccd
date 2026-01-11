@@ -14,13 +14,7 @@ export function betaLogDensity(x: number, { alpha, beta }: BetaParameters) {
 }
 
 export function betaPointEstimate({ alpha, beta }: BetaParameters) {
-	if (alpha <= 1.0 || beta <= 1.0) {
-		// there is no real mode
-		// we return the expectation
-		return alpha / (alpha + beta);
-	} else {
-		return (alpha - 1) / (alpha + beta - 2);
-	}
+	return alpha / (alpha + beta);
 }
 
 /**

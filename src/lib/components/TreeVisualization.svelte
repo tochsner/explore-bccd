@@ -1,86 +1,74 @@
 <script lang="ts">
-	import { untrack } from 'svelte';
-	import { phylotree } from 'phylotree';
-	import Spinner from './Spinner.svelte';
+	import { TreeLayout } from '$lib/algorithms/treeLayout';
+	import type { NodeToDraw, TreeToDraw } from '$lib/algorithms/treeToDraw';
+	import { Canvas, Layer, type Render } from 'svelte-canvas';
 
 	let {
-		newick
+		treeToDraw
 	}: {
-		newick: string;
+		treeToDraw: TreeToDraw;
 	} = $props();
 
-	let container = $state<HTMLDivElement>();
-	let tree: any = $state();
-	let isLoading = $state(true);
-	let error = $state<string | null>(null);
+	let height = $state<number>();
+	let width = $state<number>();
 
-	let clientWidth = $state();
-	let clientHeight = $state();
+	const render: Render = ({ context, width, height }) => {
+		const treeLayout = new TreeLayout(treeToDraw);
+		const xCoordinates = treeLayout.getXCoordinates();
+		const yCoordinates = treeLayout.getYCoordinates();
 
-	// use $effect to wait for both newick and container to be available
-	$effect(() => {
-		// only track newick and container changes
-		const currentNewick = newick;
-		const currentContainer = container;
+		function renderNode(child: NodeToDraw, parent: NodeToDraw) {
+			const parentX = 100 * (xCoordinates.get(parent.nr) || 0.0);
+			const parentY = 100 * (yCoordinates.get(parent.nr) || 0.0);
+			const childX = 100 * (xCoordinates.get(child.nr) || 0.0);
+			const childY = 100 * (yCoordinates.get(child.nr) || 0.0);
 
-		// wait for both newick and container to be available
-		if (!currentNewick || !currentContainer) {
-			return;
+			context.beginPath();
+			context.moveTo(parentX, parentY);
+			context.lineTo(parentX, childY);
+			context.stroke();
+
+			context.beginPath();
+			context.moveTo(parentX, childY);
+			context.lineTo(childX, childY);
+			context.stroke();
+
+			if (child.type === 'leaf') {
+				context.font = `15px sans-serif`;
+				context.textAlign = 'left';
+				context.textBaseline = 'middle';
+				context.fillStyle = 'black';
+				context.fillText(child.label + ' ' + child.nr, childX + 10, childY);
+			} else {
+				context.font = `10px sans-serif`;
+				context.textAlign = 'left';
+				context.textBaseline = 'middle';
+				context.fillStyle = 'black';
+				context.fillText(child.nr.toString(), childX + 2, childY);
+
+				renderNode(child.left, child);
+				renderNode(child.right, child);
+			}
 		}
 
-		// update state without triggering the effect
-		untrack(() => {
-			try {
-				// clear previous content
-				currentContainer.innerHTML = '';
+		const root = treeToDraw.root;
+		if (root.type === 'leaf') return;
 
-				// create phylotree instance
-				tree = new phylotree(currentNewick);
+		renderNode(root.left, root);
+		renderNode(root.right, root);
 
-				// render the tree
-				const renderedTree = tree.render({
-					width: clientWidth,
-					height: clientHeight,
-					'align-tips': 'true',
-					'left-right-spacing': 'fit-to-size',
-					'top-bottom-spacing': 'fit-to-size',
-					brush: 'false'
-				});
-
-				currentContainer.appendChild(renderedTree.show());
-
-				isLoading = false;
-				error = null;
-			} catch (err) {
-				console.error('Error rendering tree:', err);
-				error = err instanceof Error ? err.message : 'Failed to render tree';
-				isLoading = false;
-			}
-		});
-	});
+		context.font = `${width / 10}px sans-serif`;
+		context.textAlign = 'center';
+		context.textBaseline = 'middle';
+		context.fillStyle = 'tomato';
+		context.fillText('hello world', width / 2, height / 2);
+	};
 </script>
 
-<div class="relative h-full w-full">
-	<!-- Always render the container so it can be bound -->
-	<div
-		class="tree-container"
-		class:opacity-0={isLoading || error}
-		bind:this={container}
-		bind:clientHeight
-		bind:clientWidth
-	></div>
-
-	<!-- Loading overlay -->
-	{#if isLoading}
-		<div class="absolute inset-0 flex items-center justify-center bg-white">
-			<Spinner />
-		</div>
-	{/if}
-
-	<!-- Error overlay -->
-	{#if error}
-		<div class="absolute inset-0 flex items-center justify-center bg-white">
-			<span class="text-red-600">Error: {error}</span>
-		</div>
+<div class="h-full w-full flex-1" bind:clientHeight={height} bind:clientWidth={width}>
+	{#if height && width}
+		<Canvas {height} {width}>
+			<Layer {render} />
+		</Canvas>
 	{/if}
 </div>

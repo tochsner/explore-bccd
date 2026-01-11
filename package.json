@@ -11,7 +11,8 @@
 		"check": "svelte-kit sync && svelte-check --tsconfig ./jsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./jsconfig.json --watch",
 		"format": "prettier --write .",
-		"lint": "prettier --check . && eslint ."
+		"lint": "prettier --check . && eslint .",
+    	"test": "vitest"
 	},
 	"devDependencies": {
 		"@eslint/compat": "^1.4.0",
@@ -41,6 +42,9 @@
 		"fmin": "^0.0.4",
 		"install": "^0.13.0",
 		"npm": "^11.7.0",
-		"phylojs": "^1.12.0"
+		"phylojs": "^1.12.0",
+		"phylotree": "^2.4.0",
+		"svelte-canvas": "^2.1.0",
+		"vitest": "^4.0.16"
 	}
 }

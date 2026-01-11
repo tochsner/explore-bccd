@@ -4,6 +4,7 @@
 	import BuildBCCD from '$lib/components/BuildBCCD.svelte';
 	import TreeVisualization from '$lib/components/TreeVisualization.svelte';
 	import TreeParserWorker from '$lib/workers/tree-parser.worker?worker';
+	import type { TreeToDraw } from '$lib/algorithms/treeToDraw';
 
 	let worker: Worker | undefined = $state();
 	let posteriorTreesLoaded = $state(false);
@@ -12,6 +13,7 @@
 	let pointEstimateNewick = $state('');
 
 	let stage = $derived.by(() => {
+		return 'explore';
 		if (!posteriorTreesLoaded) return 'loadTrees';
 		else if (!bccdBuilt) return 'buildModel';
 		else return 'explore';
@@ -23,6 +25,83 @@
 			worker?.terminate();
 		};
 	});
+
+	const treeToDraw: TreeToDraw = {
+		// Newick for this tree: (Humans:10.0,((Apes:3.0,Giraffe:3.0):5.0,Cats:2.0):8.0);
+
+		root: {
+			type: 'internal',
+			nr: 0,
+			height: 3,
+			left: {
+				type: 'internal',
+				nr: 1,
+				height: 2,
+				left: {
+					type: 'leaf',
+					nr: 2,
+					height: 0.5,
+					label: 'A'
+				},
+				right: {
+					type: 'internal',
+					nr: 3,
+					height: 1,
+					left: {
+						type: 'leaf',
+						nr: 4,
+						height: 0,
+						label: 'B'
+					},
+					right: {
+						type: 'leaf',
+						nr: 5,
+						height: 0,
+						label: 'C'
+					}
+				}
+			},
+			right: {
+				type: 'internal',
+				nr: 6,
+				height: 2.5,
+				left: {
+					type: 'internal',
+					nr: 7,
+					height: 0.5,
+					left: {
+						type: 'leaf',
+						nr: 8,
+						height: 0,
+						label: 'D'
+					},
+					right: {
+						type: 'leaf',
+						nr: 9,
+						height: 0,
+						label: 'E'
+					}
+				},
+				right: {
+					type: 'internal',
+					nr: 10,
+					height: 1,
+					left: {
+						type: 'leaf',
+						nr: 11,
+						height: 0,
+						label: 'F'
+					},
+					right: {
+						type: 'leaf',
+						nr: 12,
+						height: 0,
+						label: 'G'
+					}
+				}
+			}
+		}
+	};
 </script>
 
 {#if worker}
@@ -39,8 +118,8 @@
 	{:else if stage == 'buildModel'}
 		<BuildBCCD {worker} bind:bccdBuilt bind:pointEstimateNewick />
 	{:else if stage == 'explore'}
-		<div class="flex w-full flex-col gap-6 px-6 pb-8">
-			<TreeVisualization newick={pointEstimateNewick} />
+		<div class="flex h-full w-full flex-1 flex-col px-6 pb-8">
+			<TreeVisualization {treeToDraw} />
 		</div>
 	{/if}
 {/if}

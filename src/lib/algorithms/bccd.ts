@@ -15,7 +15,7 @@ export class BCCD {
 	rootClade!: Clade;
 	clades: Map<number, Clade>;
 	splits: Map<number, CladeSplit>;
-	splitsPerClade: Map<number, Set<CladeSplit>>;
+	splitsPerClade: Map<number, Set<number>>;
 
 	numCladeOccurrences: Map<number, number>;
 	numSplitOccurrences: Map<number, number>;
@@ -141,7 +141,7 @@ export class BCCD {
 		if (!this.splitsPerClade.has(cladeSplit.parent.fingerprint)) {
 			this.splitsPerClade.set(cladeSplit.parent.fingerprint, new Set());
 		}
-		this.splitsPerClade.get(cladeSplit.parent.fingerprint)?.add(cladeSplit);
+		this.splitsPerClade.get(cladeSplit.parent.fingerprint)?.add(cladeSplit.fingerprint);
 
 		// increase number of occurrences
 

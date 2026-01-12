@@ -2,14 +2,13 @@ import { readTreesFromNexus, readNexus, Tree } from 'phylojs';
 import { BCCD } from '$lib/algorithms/bccd';
 import type { TreeWorkerMessage, TreeWorkerResponse } from './messages';
 import { BCCDPointEstimator } from '$lib/algorithms/pointEstimate';
-import type { TreeToDraw } from '$lib/algorithms/treeToDraw';
 import { translateLabels } from '$lib/algorithms/treeUtils';
 
 class WorkerAPI {
 	private posteriorTrees: Tree[] | null = null;
 	private summaryTree: Tree | null = null;
 	private bccd: BCCD | null = null;
-	private pointEstimate: TreeToDraw | null = null;
+	private pointEstimate: BCCDPointEstimator | null = null;
 
 	handleMessage(message: TreeWorkerMessage): TreeWorkerResponse {
 		try {
@@ -22,6 +21,9 @@ class WorkerAPI {
 
 				case 'buildBCCD':
 					return this.buildBCCD();
+
+				case 'getPotentialSplits':
+					return this.getPotentialSplits(message.nodeNr);
 			}
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
@@ -48,9 +50,13 @@ class WorkerAPI {
 		}
 
 		this.bccd = new BCCD(this.posteriorTrees);
-		this.pointEstimate = new BCCDPointEstimator(this.bccd).buildPointEstimate();
+		this.pointEstimate = new BCCDPointEstimator(this.bccd);
 
-		return { success: true, pointEstimate: this.pointEstimate };
+		return { success: true, pointEstimate: this.pointEstimate.pointEstimate };
+	}
+
+	private getPotentialSplits(nodeNr: number): TreeWorkerResponse {
+		return { success: true, splits: this.pointEstimate?.getMostLikelyCladeSplits(nodeNr) };
 	}
 }
 

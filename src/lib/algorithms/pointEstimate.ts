@@ -1,9 +1,15 @@
 import type { BCCD } from './bccd';
-import { isLeaf, isRoot, type Clade } from './clade';
+import { fingerprint, getLeafNames, isLeaf, isRoot, type Clade } from './clade';
 import { logNormalPointEstimate, logNormalSample } from './logNormalDistribution';
 import type { CladeSplit } from './cladeSplit';
 import { betaLogDensity, betaPointEstimate, betaSample } from './betaDistribution';
-import type { TreeToDraw, NodeToDraw, LeafToDraw, InternalNodeToDraw } from './treeToDraw';
+import {
+	type TreeToDraw,
+	type NodeToDraw,
+	type LeafToDraw,
+	type InternalNodeToDraw,
+	getCladeLabels
+} from './treeToDraw';
 import { getHistogram } from './histogram';
 
 export class BCCDPointEstimator {
@@ -14,9 +20,14 @@ export class BCCDPointEstimator {
 	cladeSubtreeHeights: Map<number, number>;
 	splitSubtreeHeights: Map<number, number>;
 
+	pointEstimate: TreeToDraw;
+	pointEstimateNodes: Map<number, NodeToDraw>;
+
 	bestSplitsPerClade: Map<number, CladeSplit>;
 	bestSplitProbabilityPerClade: Map<number, number>;
 
+	cladeToNodeNr: Map<number, number>;
+	nodeNrToClade: Map<number, Clade>;
 	runningNodeNumber: number;
 
 	constructor(bccd: BCCD) {
@@ -26,13 +37,65 @@ export class BCCDPointEstimator {
 		this.splitSubtreeHeights = new Map();
 		this.bestSplitsPerClade = new Map();
 		this.bestSplitProbabilityPerClade = new Map();
+		this.nodeNrToClade = new Map();
+		this.cladeToNodeNr = new Map();
+		this.pointEstimateNodes = new Map();
 		this.runningNodeNumber = 0;
 
 		this.collectCladeSubtreeLogDensities(bccd.rootClade);
 		this.cladeSubtreeHeights.set(this.bccd.rootClade.fingerprint, 1.0);
+
+		this.pointEstimate = this.buildPointEstimate();
 	}
 
-	collectCladeSubtreeLogDensities(clade: Clade) {
+	private buildPointEstimate(): TreeToDraw {
+		const treeHeight = logNormalPointEstimate(this.bccd.treeHeightDistribution);
+
+		this.runningNodeNumber = 0;
+		const pointEstimate = {
+			root: this.buildCladeSubtree(this.bccd.rootClade, treeHeight, 'pointEstimate').node
+		};
+
+		this.sampleHeightDistributions(pointEstimate);
+
+		return pointEstimate;
+	}
+
+	getMostLikelyCladeSplits(cladeNr: number): {
+		leftLabels: string[];
+		rightLabels: string[];
+		logDensity: number;
+	}[] {
+		const clade = this.nodeNrToClade.get(cladeNr);
+		if (clade === undefined) return [];
+
+		return (
+			(this.bccd.splitsPerClade.get(clade.fingerprint) || [])
+				.values()
+				.toArray()
+				// get all possible splits
+				.map((fingerprint) => this.bccd.splits.get(fingerprint))
+				.filter((split) => !!split)
+				// attach local log densities
+				.map((split) => ({
+					...split,
+					logDensity: this.getLocalSplitLogDensity(split)
+				}))
+				// sort by density
+				.sort((a, b) => b.logDensity - a.logDensity)
+				// take the five most likely
+				.slice(0, 5)
+				.map((split) => {
+					return {
+						leftLabels: getLeafNames(this.bccd, split.clade1),
+						rightLabels: getLeafNames(this.bccd, split.clade2),
+						logDensity: split.logDensity
+					};
+				})
+		);
+	}
+
+	private collectCladeSubtreeLogDensities(clade: Clade) {
 		if (isLeaf(clade)) {
 			this.cladeSubtreeHeights.set(clade.fingerprint, 0.0);
 			return 0;
@@ -43,7 +106,10 @@ export class BCCDPointEstimator {
 
 		const possibleSplits = this.bccd.splitsPerClade.get(clade.fingerprint);
 
-		for (const split of possibleSplits || []) {
+		for (const splitFingerprint of possibleSplits || []) {
+			const split = this.bccd.splits.get(splitFingerprint);
+			if (!split) continue;
+
 			const logDensity = this.collectSplitSubtreeLogDensities(split);
 
 			if (bestSplitLogDensity < logDensity) {
@@ -65,7 +131,7 @@ export class BCCDPointEstimator {
 		return bestSplitLogDensity;
 	}
 
-	collectSplitSubtreeLogDensities(split: CladeSplit) {
+	private collectSplitSubtreeLogDensities(split: CladeSplit) {
 		const existingSplitSubtreeLogDensities = this.splitSubtreeLogDensities.get(split.fingerprint);
 		if (existingSplitSubtreeLogDensities !== undefined) {
 			return existingSplitSubtreeLogDensities;
@@ -120,21 +186,8 @@ export class BCCDPointEstimator {
 		return splitDensity;
 	}
 
-	buildPointEstimate(): TreeToDraw {
-		const treeHeight = logNormalPointEstimate(this.bccd.treeHeightDistribution);
-
-		this.runningNodeNumber = 0;
-		const pointEstimate = {
-			root: this.buildCladeSubtree(this.bccd.rootClade, treeHeight, 'pointEstimate').node
-		};
-
-		this.sampleHeightDistributions(pointEstimate);
-
-		return pointEstimate;
-	}
-
-	sampleHeightDistributions(treeToDraw: TreeToDraw) {
-		const numSamples = 5000;
+	private sampleHeightDistributions(treeToDraw: TreeToDraw) {
+		const numSamples = 10_000;
 
 		const heightsPerNode = new Map<number, number[]>();
 		for (let i = 0; i < numSamples; i++) {
@@ -171,7 +224,7 @@ export class BCCDPointEstimator {
 		}
 	}
 
-	buildCladeSubtree(
+	private buildCladeSubtree(
 		clade: Clade,
 		treeHeight: number,
 		samplingMethod: 'pointEstimate' | 'sample'
@@ -184,6 +237,13 @@ export class BCCDPointEstimator {
 				height,
 				label: clade.label
 			};
+
+			if (samplingMethod === 'pointEstimate') {
+				this.nodeNrToClade.set(node.nr, clade);
+				this.cladeToNodeNr.set(clade.fingerprint, node.nr);
+				this.pointEstimateNodes.set(node.nr, node);
+			}
+
 			return { node, height };
 		}
 
@@ -240,6 +300,29 @@ export class BCCDPointEstimator {
 			heightDistribution: []
 		};
 
+		if (samplingMethod === 'pointEstimate') {
+			this.nodeNrToClade.set(node.nr, clade);
+			this.cladeToNodeNr.set(clade.fingerprint, node.nr);
+			this.pointEstimateNodes.set(node.nr, node);
+		}
+
 		return { node, height };
+	}
+
+	private getLocalSplitLogDensity(split: CladeSplit) {
+		const localCCDLogDensity =
+			Math.log(this.bccd.numSplitOccurrences.get(split.fingerprint) || 0) -
+			Math.log(this.bccd.numCladeOccurrences.get(split.parent.fingerprint) || 0);
+
+		const betaParameters = this.bccd.splitRatioDistributions.get(split.fingerprint);
+
+		if (betaParameters === undefined) {
+			throw new Error('Split with no estimated parameters encountered. This should not happen.');
+		}
+
+		const ratioPointEstimate = betaPointEstimate(betaParameters);
+		const pointEstimateLogDensity = betaLogDensity(ratioPointEstimate, betaParameters);
+
+		return localCCDLogDensity + pointEstimateLogDensity;
 	}
 }

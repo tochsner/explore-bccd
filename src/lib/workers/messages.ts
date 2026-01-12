@@ -16,10 +16,16 @@ type BuildBCCDMessage = {
 	type: 'buildBCCD';
 };
 
+type GetPotentialSplitsMessages = {
+	type: 'getPotentialSplits';
+	nodeNr: number;
+};
+
 export type TreeWorkerMessage =
 	| ParsePosteriorTreesMessage
 	| ParseSummaryTreeMessage
-	| BuildBCCDMessage;
+	| BuildBCCDMessage
+	| GetPotentialSplitsMessages;
 
 // output message types
 
@@ -37,13 +43,17 @@ export type BuiltBCCDResponse = {
 	pointEstimate: TreeToDraw;
 };
 
-export type BuiltBCCDResponse2 = {
+export type GetPotentialSplitsResponse = {
 	success: true;
-	map: unknown;
+	splits: {
+		leftLabels: string[];
+		rightLabels: string[];
+		logDensity: number;
+	}[];
 };
 
 export type TreeWorkerResponse =
 	| SuccessResponse
 	| ErrorResponse
 	| BuiltBCCDResponse
-	| BuiltBCCDResponse2;
+	| GetPotentialSplitsResponse;

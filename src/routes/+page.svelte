@@ -55,7 +55,7 @@
 				</div>
 				{#if selectedNode}
 					<div class="w-[350px] shrink-0 p-4 pl-0">
-						<Sidebar node={selectedNode} onClose={handleCloseSidebar} />
+						<Sidebar {worker} node={selectedNode} onClose={handleCloseSidebar} />
 					</div>
 				{/if}
 			</div>

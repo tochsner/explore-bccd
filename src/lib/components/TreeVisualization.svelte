@@ -6,71 +6,48 @@
 		type NodeToDraw,
 		type TreeToDraw
 	} from '$lib/algorithms/treeToDraw';
-	import { tick } from 'svelte';
 	import { Canvas, Layer, type Render } from 'svelte-canvas';
 
 	let {
-		treeToDraw
+		treeToDraw,
+		onClickNode
 	}: {
 		treeToDraw: TreeToDraw;
+		onClickNode?: (nodeNr: number) => void;
 	} = $props();
 
 	let height = $state<number>();
 	let width = $state<number>();
 
-	const render: Render = ({ context, width, height }) => {
-		const treeLayout = new TreeLayout(treeToDraw);
-		const treeTimeHeight = getTreeHeight(treeToDraw);
-		const xCoordinates = treeLayout.getXCoordinates();
-		const yCoordinates = treeLayout.getYCoordinates();
+	const margin = 40;
 
-		const margin = 50;
-		const maxLabelWidth = getMaxLabelWidth();
+	let minHeight = $derived.by(() => {
+		const leafLabels = getLeafLabels(treeToDraw);
+		const minLeafGap = 15;
+		return Math.max(2 * margin + minLeafGap * (leafLabels.length - 1), height || 0.0);
+	});
+
+	const treeLayout = $derived(new TreeLayout(treeToDraw));
+	const xCoordinates = $derived(treeLayout.getXCoordinates());
+	const yCoordinates = $derived(treeLayout.getYCoordinates());
+
+	let renderedNodeCoordinates = $state<{ nr: number; x: number; y: number }[]>([]);
+
+	const accentColor = getComputedStyle(document.body).getPropertyValue('--color-accent');
+
+	const renderTree: Render = ({ context, width, height }) => {
+		const maxLabelWidth = getMaxLabelWidth(context);
 		const treeWidth = width - 2 * margin - maxLabelWidth;
 		const treeHeight = height - 2 * margin;
 
-		const accentColor = getComputedStyle(document.body).getPropertyValue('--color-accent');
+		const localRenderedNodeCoordinates: { nr: number; x: number; y: number }[] = [];
 
 		const root = treeToDraw.root;
 		if (root.type === 'leaf') return;
 
-		renderRoot(root);
+		renderNode(root, root);
 		renderNode(root.left, root);
 		renderNode(root.right, root);
-		renderTimeAxis();
-
-		function getMaxLabelWidth() {
-			context.font = `15px sans-serif`;
-			context.textAlign = 'left';
-			context.textBaseline = 'middle';
-			context.fillStyle = 'black';
-
-			return Math.max(
-				...getLeafLabels(treeToDraw).map((label) => context.measureText(label).width)
-			);
-			context.measureText('myText').width;
-		}
-
-		function renderRoot(root: NodeToDraw) {
-			// render a small branch
-
-			const rootBranchLength = 10;
-
-			const rootX = treeWidth * (xCoordinates.get(root.nr) || 0.0) + margin;
-			const rootY = treeHeight * (yCoordinates.get(root.nr) || 0.0) + margin;
-
-			context.beginPath();
-			context.moveTo(rootX - rootBranchLength, rootY);
-			context.lineTo(rootX, rootY);
-			context.stroke();
-
-			// render dot
-
-			context.beginPath();
-			context.arc(rootX, rootY, 4, 0, Math.PI * 2);
-			context.fillStyle = 'black';
-			context.fill();
-		}
 
 		function renderNode(child: NodeToDraw, parent: NodeToDraw) {
 			// renders the branch from parent leading up to child
@@ -79,6 +56,8 @@
 			const parentY = treeHeight * (yCoordinates.get(parent.nr) || 0.0) + margin;
 			const childX = treeWidth * (xCoordinates.get(child.nr) || 0.0) + margin;
 			const childY = treeHeight * (yCoordinates.get(child.nr) || 0.0) + margin;
+
+			localRenderedNodeCoordinates.push({ nr: child.nr, x: childX, y: childY });
 
 			// render branch
 
@@ -108,45 +87,6 @@
 				context.fillStyle = 'black';
 				context.fillText(child.label, childX + 10, childY);
 			} else {
-				// render dot
-
-				context.beginPath();
-				context.arc(childX, childY, 4, 0, Math.PI * 2);
-				context.fillStyle = accentColor;
-				context.fill();
-
-				// render height distribution
-
-				const histogramHeight = 5;
-
-				const histogramStartX =
-					(treeWidth * (treeTimeHeight - (child.heightDistribution.at(0)?.bucketStart || 0.0))) /
-						treeTimeHeight +
-					margin;
-				const histogramEndX =
-					(treeWidth *
-						(treeTimeHeight -
-							(child.heightDistribution.at(child.heightDistribution.length - 1)?.bucketEnd ||
-								0.0))) /
-						treeTimeHeight +
-					margin;
-
-				const bucketWidth = (histogramEndX - histogramStartX) / child.heightDistribution.length;
-
-				context.beginPath();
-				context.moveTo(histogramStartX, childY);
-
-				child.heightDistribution.forEach((bucket, index) => {
-					context.lineTo(
-						histogramStartX + (index + 1) * bucketWidth,
-						childY - histogramHeight * bucket.normalizedDensity
-					);
-				});
-
-				context.lineTo(histogramEndX, childY);
-
-				context.fill();
-
 				// render subtree
 
 				renderNode(child.left, child);
@@ -154,49 +94,166 @@
 			}
 		}
 
-		function renderTimeAxis() {
-			const tickHeight = 10;
+		renderedNodeCoordinates = localRenderedNodeCoordinates;
+	};
 
-			context.strokeStyle = 'lightgray';
+	const renderTimeAxis: Render = ({ context, width }) => {
+		const treeTimeHeight = getTreeHeight(treeToDraw);
 
-			// render line
+		const maxLabelWidth = getMaxLabelWidth(context);
+		const treeWidth = width - 2 * margin - maxLabelWidth;
 
+		const root = treeToDraw.root;
+		if (root.type === 'leaf') return;
+
+		const tickHeight = 10;
+
+		context.strokeStyle = 'lightgray';
+
+		// render line
+
+		context.beginPath();
+		context.moveTo(0, tickHeight / 2);
+		context.lineTo(treeWidth + margin + 10, tickHeight / 2);
+		context.stroke();
+
+		// render ticks
+
+		const tickTimeGap = Math.pow(10, Math.floor(Math.log10(treeTimeHeight)));
+		const tickPixelGap = (tickTimeGap * width) / treeTimeHeight;
+		const numTicks = Math.floor(treeTimeHeight / tickTimeGap);
+
+		[...Array(numTicks).keys()].forEach((tick) => {
+			const tickX = margin + treeWidth - tick * tickPixelGap;
+			const tickTime = tick * tickTimeGap;
+
+			// render tick line
 			context.beginPath();
-			context.moveTo(margin, tickHeight / 2);
-			context.lineTo(margin + treeWidth, tickHeight / 2);
+			context.moveTo(tickX, 0);
+			context.lineTo(tickX, tickHeight);
 			context.stroke();
 
-			// render ticks
+			// render tick label
+			context.font = `12px sans-serif`;
+			context.textAlign = 'center';
+			context.textBaseline = 'middle';
+			context.fillStyle = 'lightgray';
+			context.fillText(tickTime.toString(), tickX, tickHeight + 10);
+		});
+	};
 
-			const tickTimeGap = Math.pow(10, Math.floor(Math.log10(treeTimeHeight)));
-			const tickPixelGap = (tickTimeGap * width) / treeTimeHeight;
-			const numTicks = Math.floor(treeTimeHeight / tickTimeGap) + 1;
+	const renderDistributions: Render = ({ context, width, height }) => {
+		const treeLayout = new TreeLayout(treeToDraw);
+		const treeTimeHeight = getTreeHeight(treeToDraw);
 
-			[...Array(numTicks).keys()].forEach((tick) => {
-				const tickX = margin + treeWidth - tick * tickPixelGap;
-				const tickTime = tick * tickTimeGap;
+		const maxLabelWidth = getMaxLabelWidth(context);
+		const treeWidth = width - 2 * margin - maxLabelWidth;
+		const treeHeight = height - 2 * margin;
 
-				// render tick line
-				context.beginPath();
-				context.moveTo(tickX, 0);
-				context.lineTo(tickX, tickHeight);
-				context.stroke();
+		const root = treeToDraw.root;
+		if (root.type === 'leaf') return;
 
-				// render tick label
-				context.font = `12px sans-serif`;
-				context.textAlign = 'center';
-				context.textBaseline = 'middle';
-				context.fillStyle = 'lightgray';
-				context.fillText(tickTime.toFixed(1), tickX, tickHeight + 10);
+		renderNode(root, root);
+		renderNode(root.left, root);
+		renderNode(root.right, root);
+
+		function renderNode(child: NodeToDraw, parent: NodeToDraw) {
+			if (child.type === 'leaf') return;
+
+			const childX = treeWidth * (xCoordinates.get(child.nr) || 0.0) + margin;
+			const childY = treeHeight * (yCoordinates.get(child.nr) || 0.0) + margin;
+
+			const histogramHeight = 50;
+
+			const histogramStartX =
+				(treeWidth * (treeTimeHeight - (child.heightDistribution.at(0)?.bucketStart || 0.0))) /
+					treeTimeHeight +
+				margin;
+			const histogramEndX =
+				(treeWidth *
+					(treeTimeHeight -
+						(child.heightDistribution.at(child.heightDistribution.length - 1)?.bucketEnd || 0.0))) /
+					treeTimeHeight +
+				margin;
+
+			const bucketWidth = (histogramEndX - histogramStartX) / child.heightDistribution.length;
+
+			context.fillStyle = 'rgba(100, 100, 100, 0.2)';
+			context.beginPath();
+			context.moveTo(histogramStartX, childY);
+			context.lineTo(
+				histogramStartX,
+				childY - histogramHeight * child.heightDistribution[0].normalizedDensity
+			);
+
+			child.heightDistribution.forEach((bucket, index) => {
+				context.lineTo(
+					histogramStartX + (index + 1) * bucketWidth,
+					childY - histogramHeight * bucket.normalizedDensity
+				);
 			});
+
+			context.lineTo(
+				histogramStartX,
+				childY -
+					histogramHeight *
+						child.heightDistribution[child.heightDistribution.length - 1].normalizedDensity
+			);
+			context.fill();
+
+			// render subtree
+
+			renderNode(child.left, child);
+			renderNode(child.right, child);
 		}
 	};
+
+	function getMaxLabelWidth(context: CanvasRenderingContext2D) {
+		context.font = `15px sans-serif`;
+		context.textAlign = 'left';
+		context.textBaseline = 'middle';
+		context.fillStyle = 'black';
+
+		return Math.max(...getLeafLabels(treeToDraw).map((label) => context.measureText(label).width));
+	}
+
+	function onclick(event: Event) {
+		if (!onClickNode) return;
+
+		const canvas = event.currentTarget as Canvas | null;
+		if (canvas === null) return;
+
+		// translate mouse location to canvas coordinates
+
+		const rect: DOMRect = canvas.getBoundingClientRect();
+		const x = (event as MouseEvent).clientX - rect.x;
+		const y = (event as MouseEvent).clientY - rect.y;
+
+		// find node closest to click location
+
+		const distanceThreshold = 10;
+
+		const nr = renderedNodeCoordinates
+			.map((c) => ({
+				nr: c.nr,
+				distance: (x - c.x) ** 2 + (y - c.y) ** 2
+			}))
+			.sort((a, b) => a.distance - b.distance)
+			.filter((c) => c.distance < distanceThreshold ** 2)
+			.at(0);
+
+		if (nr !== undefined) onClickNode(nr.nr);
+	}
 </script>
 
-<div class="h-full w-full flex-1" bind:clientHeight={height} bind:clientWidth={width}>
-	{#if height && width}
-		<Canvas {height} {width}>
-			<Layer {render} />
-		</Canvas>
-	{/if}
+<div class="h-full min-h-0 w-full flex-1 p-4">
+	<div class="h-full w-full" bind:clientHeight={height} bind:clientWidth={width}>
+		{#if height && width && minHeight}
+			<Canvas height={minHeight} {width} {onclick}>
+				<Layer render={renderTree} />
+				<Layer render={renderDistributions} />
+				<Layer render={renderTimeAxis} />
+			</Canvas>
+		{/if}
+	</div>
 </div>

@@ -4,19 +4,24 @@ export type Histogram = {
 	normalizedDensity: number;
 }[];
 
-const NUM_BUCKETS = 25;
+const NUM_BUCKETS = 20;
 
 export function getHistogram(samples: number[]) {
 	if (!samples.length) {
 		return [];
 	}
 
-	// find min and max values
-	const min = Math.min(...samples);
-	const max = Math.max(...samples);
+	const sorted = [...samples].sort((a, b) => a - b);
+
+	// exclude 0.5% lowest, 0.5% highest (i.e., 99% central mass)
+	const lowerIdx = Math.floor(sorted.length * 0.005);
+	const upperIdx = Math.ceil(sorted.length * 0.995) - 1; // inclusive
+
+	const min = sorted[lowerIdx];
+	const max = sorted[upperIdx];
 
 	if (min === max) {
-		// all values are the same, one bucket
+		// all selected values are the same, one bucket
 		return [
 			{
 				bucketStart: min,
@@ -30,14 +35,16 @@ export function getHistogram(samples: number[]) {
 
 	// build buckets
 	const buckets = Array(NUM_BUCKETS).fill(0);
+	let total = 0;
 
-	for (const x of samples) {
+	// only include values within [min, max]
+	for (let i = lowerIdx; i <= upperIdx; i++) {
+		const x = sorted[i];
 		let idx = Math.floor((x - min) / bucketWidth);
-		if (idx === NUM_BUCKETS) idx = NUM_BUCKETS - 1; // edge case: max value
+		if (idx === NUM_BUCKETS) idx = NUM_BUCKETS - 1; // edge case: x === max
 		buckets[idx]++;
+		total++;
 	}
-
-	const total = samples.length;
 
 	// convert to { bucketStart, bucketEnd, normalizedDensity }
 	const histogram = buckets.map((count, i) => {
@@ -45,7 +52,7 @@ export function getHistogram(samples: number[]) {
 		const bucketEnd = i === NUM_BUCKETS - 1 ? max : bucketStart + bucketWidth;
 
 		// normalizedDensity: sum of all densities = 1
-		const normalizedDensity = count / total / (bucketEnd - bucketStart);
+		const normalizedDensity = count / total;
 		return { bucketStart, bucketEnd, normalizedDensity };
 	});
 

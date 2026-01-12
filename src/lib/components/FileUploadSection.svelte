@@ -4,7 +4,7 @@
 
 	let {
 		worker,
-		posteriorTreesLoaded = $bindable(),
+		posteriorTreesLoaded = $bindable()
 	}: {
 		worker: Worker;
 		posteriorTreesLoaded: boolean;
@@ -43,7 +43,7 @@
 
 <div class="flex items-stretch justify-between gap-12">
 	<div
-		class="text-white border-white/70 flex h-[250px] w-[400px] flex-col items-center justify-center gap-8 rounded-2xl border p-14 shadow-lg shadow-gray-400/10 transition hover:scale-105"
+		class="flex h-[250px] w-[400px] flex-col items-center justify-center gap-8 rounded-2xl border border-white/70 p-14 text-white shadow-lg shadow-gray-400/10 transition hover:scale-105"
 		style="background: linear-gradient(45deg, hsla(324, 35%, 40%) 0%, hsla(324, 30%, 45%) 100%)"
 	>
 		<label class="flex w-full cursor-pointer flex-col items-center gap-6">

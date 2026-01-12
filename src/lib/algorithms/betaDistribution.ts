@@ -2,6 +2,7 @@ import digamma from '@stdlib/math/base/special/digamma';
 import mean from '@stdlib/stats/base/mean';
 import variance from '@stdlib/stats/base/variance';
 import { logpdf } from '@stdlib/stats/base/dists/beta';
+import { beta as sampleBeta } from '@stdlib/random/base';
 import { nelderMead } from 'fmin';
 
 export type BetaParameters = {
@@ -15,6 +16,10 @@ export function betaLogDensity(x: number, { alpha, beta }: BetaParameters) {
 
 export function betaPointEstimate({ alpha, beta }: BetaParameters) {
 	return alpha / (alpha + beta);
+}
+
+export function betaSample({ alpha, beta }: BetaParameters) {
+	return sampleBeta(alpha, beta);
 }
 
 /**

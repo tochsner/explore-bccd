@@ -1,9 +1,10 @@
-import { Tree, Node } from 'phylojs';
 import type { BCCD } from './bccd';
 import { isLeaf, isRoot, type Clade } from './clade';
-import { logNormalPointEstimate } from './logNormalDistribution';
+import { logNormalPointEstimate, logNormalSample } from './logNormalDistribution';
 import type { CladeSplit } from './cladeSplit';
-import { betaLogDensity, betaPointEstimate } from './betaDistribution';
+import { betaLogDensity, betaPointEstimate, betaSample } from './betaDistribution';
+import type { TreeToDraw, NodeToDraw, LeafToDraw, InternalNodeToDraw } from './treeToDraw';
+import { getHistogram } from './histogram';
 
 export class BCCDPointEstimator {
 	bccd: BCCD;
@@ -14,6 +15,7 @@ export class BCCDPointEstimator {
 	splitSubtreeHeights: Map<number, number>;
 
 	bestSplitsPerClade: Map<number, CladeSplit>;
+	bestSplitProbabilityPerClade: Map<number, number>;
 
 	runningNodeNumber: number;
 
@@ -23,6 +25,7 @@ export class BCCDPointEstimator {
 		this.cladeSubtreeHeights = new Map();
 		this.splitSubtreeHeights = new Map();
 		this.bestSplitsPerClade = new Map();
+		this.bestSplitProbabilityPerClade = new Map();
 		this.runningNodeNumber = 0;
 
 		this.collectCladeSubtreeLogDensities(bccd.rootClade);
@@ -117,22 +120,71 @@ export class BCCDPointEstimator {
 		return splitDensity;
 	}
 
-	buildPointEstimate(): Tree {
+	buildPointEstimate(): TreeToDraw {
 		const treeHeight = logNormalPointEstimate(this.bccd.treeHeightDistribution);
 
 		this.runningNodeNumber = 0;
-		const root = this.buildCladeSubtree(this.bccd.rootClade, treeHeight);
-		root.branchLength = 0.0;
+		const pointEstimate = {
+			root: this.buildCladeSubtree(this.bccd.rootClade, treeHeight, 'pointEstimate').node
+		};
 
-		return new Tree(root);
+		this.sampleHeightDistributions(pointEstimate);
+
+		return pointEstimate;
 	}
 
-	buildCladeSubtree(clade: Clade, treeHeight: number): Node {
+	sampleHeightDistributions(treeToDraw: TreeToDraw) {
+		const numSamples = 5000;
+
+		const heightsPerNode = new Map<number, number[]>();
+		for (let i = 0; i < numSamples; i++) {
+			const treeHeight = logNormalSample(this.bccd.treeHeightDistribution);
+
+			this.runningNodeNumber = 0;
+			const { node } = this.buildCladeSubtree(this.bccd.rootClade, treeHeight, 'sample');
+
+			// collect height samples per node nr
+
+			collectHeightsPerNode(node);
+			function collectHeightsPerNode(node: NodeToDraw) {
+				if (!heightsPerNode.has(node.nr)) heightsPerNode.set(node.nr, []);
+				heightsPerNode.get(node.nr)?.push(node.height);
+
+				if (node.type === 'internal') {
+					collectHeightsPerNode(node.left);
+					collectHeightsPerNode(node.right);
+				}
+			}
+		}
+		// set histogram
+
+		setHistograms(treeToDraw.root);
+		function setHistograms(node: NodeToDraw) {
+			if (node.type === 'leaf') return;
+
+			const heightSamples = heightsPerNode.get(node.nr) || [];
+			const histogram = getHistogram(heightSamples);
+			node.heightDistribution = histogram;
+
+			setHistograms(node.left);
+			setHistograms(node.right);
+		}
+	}
+
+	buildCladeSubtree(
+		clade: Clade,
+		treeHeight: number,
+		samplingMethod: 'pointEstimate' | 'sample'
+	): { node: NodeToDraw; height: number } {
 		if (isLeaf(clade)) {
-			const leaf = new Node(this.runningNodeNumber++);
-			leaf.label = clade.label;
-			leaf.height = treeHeight;
-			return leaf;
+			const height = 0.0;
+			const node: LeafToDraw = {
+				type: 'leaf',
+				nr: this.runningNodeNumber++,
+				height,
+				label: clade.label
+			};
+			return { node, height };
 		}
 
 		// find best split
@@ -142,33 +194,52 @@ export class BCCDPointEstimator {
 			throw new Error('No best split for clade found. This should not happen.');
 		}
 
-		// start creating node by adding children
+		// build children
 
-		const node = new Node(this.runningNodeNumber++);
-		const child1 = this.buildCladeSubtree(bestSplit.clade1, treeHeight);
-		const child2 = this.buildCladeSubtree(bestSplit.clade2, treeHeight);
+		const { node: child1, height: childHeight1 } = this.buildCladeSubtree(
+			bestSplit.clade1,
+			treeHeight,
+			samplingMethod
+		);
+		const { node: child2, height: childHeight2 } = this.buildCladeSubtree(
+			bestSplit.clade2,
+			treeHeight,
+			samplingMethod
+		);
 
-		node.addChild(child1);
-		node.addChild(child2);
+		// get height
 
-		// set heights
+		let height;
 
-		const nodeHeight = this.cladeSubtreeHeights.get(clade.fingerprint);
-		const child1Height = this.cladeSubtreeHeights.get(bestSplit.clade1.fingerprint);
-		const child2Height = this.cladeSubtreeHeights.get(bestSplit.clade2.fingerprint);
+		if (isRoot(clade)) {
+			height = treeHeight;
+		} else {
+			const betaParameters = this.bccd.splitRatioDistributions.get(bestSplit.fingerprint);
+			if (betaParameters === undefined) {
+				throw new Error('No distribution found for clade. This should not happen.');
+			}
 
-		if (nodeHeight === undefined || child1Height === undefined || child2Height === undefined) {
-			throw new Error('No best heights found for clades. This should not happen.');
+			let branchFraction;
+			if (samplingMethod === 'pointEstimate') {
+				branchFraction = betaPointEstimate(betaParameters);
+			} else {
+				branchFraction = betaSample(betaParameters);
+			}
+
+			const olderChildHeight = Math.max(childHeight1, childHeight2);
+			const branchLength = (treeHeight - olderChildHeight) * branchFraction;
+			height = olderChildHeight + branchLength;
 		}
 
-		// phylojs assigns heights forward in time, we otherwise use heights backwards in time
-		node.height = treeHeight * (treeHeight - nodeHeight);
-		child1.height = treeHeight * (treeHeight - child1Height);
-		child2.height = treeHeight * (treeHeight - child2Height);
+		const node: InternalNodeToDraw = {
+			type: 'internal',
+			nr: this.runningNodeNumber++,
+			height,
+			left: child1,
+			right: child2,
+			heightDistribution: []
+		};
 
-		child1.branchLength = treeHeight * (nodeHeight - child1Height);
-		child2.branchLength = treeHeight * (nodeHeight - child2Height);
-
-		return node;
+		return { node, height };
 	}
 }

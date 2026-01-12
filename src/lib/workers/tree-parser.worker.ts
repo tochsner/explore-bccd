@@ -1,13 +1,15 @@
-import { readTreesFromNexus, readNexus, Tree, writeNewick } from 'phylojs';
+import { readTreesFromNexus, readNexus, Tree } from 'phylojs';
 import { BCCD } from '$lib/algorithms/bccd';
 import type { TreeWorkerMessage, TreeWorkerResponse } from './messages';
 import { BCCDPointEstimator } from '$lib/algorithms/pointEstimate';
+import type { TreeToDraw } from '$lib/algorithms/treeToDraw';
+import { translateLabels } from '$lib/algorithms/treeUtils';
 
 class WorkerAPI {
 	private posteriorTrees: Tree[] | null = null;
 	private summaryTree: Tree | null = null;
 	private bccd: BCCD | null = null;
-	private pointEstimate: Tree | null = null;
+	private pointEstimate: TreeToDraw | null = null;
 
 	handleMessage(message: TreeWorkerMessage): TreeWorkerResponse {
 		try {
@@ -30,6 +32,7 @@ class WorkerAPI {
 	private parsePosteriorTrees(content: string): TreeWorkerResponse {
 		this.posteriorTrees = readTreesFromNexus(content);
 		this.posteriorTrees.forEach((tree) => tree.computeNodeHeights());
+		translateLabels(this.posteriorTrees, content);
 		return { success: true };
 	}
 
@@ -46,9 +49,8 @@ class WorkerAPI {
 
 		this.bccd = new BCCD(this.posteriorTrees);
 		this.pointEstimate = new BCCDPointEstimator(this.bccd).buildPointEstimate();
-		const pointEstimateNewick = writeNewick(this.pointEstimate);
 
-		return { success: true, pointEstimateNewick };
+		return { success: true, pointEstimate: this.pointEstimate };
 	}
 }
 

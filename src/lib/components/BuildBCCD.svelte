@@ -1,15 +1,16 @@
 <script lang="ts">
-	import type { BuiltBCCDResponse, ErrorResponse, TreeWorkerResponse } from '$lib/workers/messages';
+	import type { TreeToDraw } from '$lib/algorithms/treeToDraw';
+	import type { BuiltBCCDResponse, ErrorResponse } from '$lib/workers/messages';
 	import Spinner from './Spinner.svelte';
 
 	let {
 		worker,
 		bccdBuilt = $bindable(),
-		pointEstimateNewick = $bindable()
+		pointEstimate = $bindable()
 	}: {
 		worker: Worker;
 		bccdBuilt: boolean;
-		pointEstimateNewick: string;
+		pointEstimate: TreeToDraw | undefined;
 	} = $props();
 
 	let isBuilding = $state(true);
@@ -21,7 +22,7 @@
 			if (e.data.success) {
 				bccdBuilt = true;
 				isBuilding = false;
-				pointEstimateNewick = e.data.pointEstimateNewick;
+				pointEstimate = e.data.pointEstimate;
 			} else {
 				error = e.data.error;
 				isBuilding = false;
@@ -38,7 +39,7 @@
 	});
 </script>
 
-<div class="mt-32 flex h-full w-full flex-col items-center justify-center gap-8">
+<div class="flex h-full w-full flex-col items-center justify-center gap-8">
 	{#if isBuilding}
 		<Spinner />
 		<span class="text-center text-lg">Building BCCD model...</span>

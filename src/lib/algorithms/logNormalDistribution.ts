@@ -1,6 +1,7 @@
 import { logpdf } from '@stdlib/stats/base/dists/lognormal';
 import mean from '@stdlib/stats/base/mean';
 import stdev from '@stdlib/stats/base/stdev';
+import { lognormal as sampleLogNormal } from '@stdlib/random/base';
 
 export type LogNormalParameters = {
 	mu: number;
@@ -13,6 +14,10 @@ export function logNormalLogDensity(x: number, { mu, sigma }: LogNormalParameter
 
 export function logNormalPointEstimate(parameters: LogNormalParameters) {
 	return Math.exp(parameters.mu - parameters.sigma * parameters.sigma);
+}
+
+export function logNormalSample(parameters: LogNormalParameters) {
+	return sampleLogNormal(parameters.mu, parameters.sigma);
 }
 
 /**

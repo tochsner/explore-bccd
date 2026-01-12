@@ -1,5 +1,7 @@
 // input message types
 
+import type { TreeToDraw } from '$lib/algorithms/treeToDraw';
+
 type ParsePosteriorTreesMessage = {
 	type: 'parsePosteriorTrees';
 	content: string;
@@ -32,7 +34,16 @@ export type ErrorResponse = {
 
 export type BuiltBCCDResponse = {
 	success: true;
-	pointEstimateNewick: string;
+	pointEstimate: TreeToDraw;
 };
 
-export type TreeWorkerResponse = SuccessResponse | ErrorResponse | BuiltBCCDResponse;
+export type BuiltBCCDResponse2 = {
+	success: true;
+	map: unknown;
+};
+
+export type TreeWorkerResponse =
+	| SuccessResponse
+	| ErrorResponse
+	| BuiltBCCDResponse
+	| BuiltBCCDResponse2;

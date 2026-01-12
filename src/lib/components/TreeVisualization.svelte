@@ -10,10 +10,10 @@
 
 	let {
 		treeToDraw,
-		onClickNode
+		selectedNode = $bindable()
 	}: {
 		treeToDraw: TreeToDraw;
-		onClickNode?: (nodeNr: number) => void;
+		selectedNode?: NodeToDraw;
 	} = $props();
 
 	let height = $state<number>();
@@ -31,7 +31,7 @@
 	const xCoordinates = $derived(treeLayout.getXCoordinates());
 	const yCoordinates = $derived(treeLayout.getYCoordinates());
 
-	let renderedNodeCoordinates = $state<{ nr: number; x: number; y: number }[]>([]);
+	let renderedNodeCoordinates = $state<{ node: NodeToDraw; x: number; y: number }[]>([]);
 
 	const accentColor = getComputedStyle(document.body).getPropertyValue('--color-accent');
 
@@ -40,7 +40,7 @@
 		const treeWidth = width - 2 * margin - maxLabelWidth;
 		const treeHeight = height - 2 * margin;
 
-		const localRenderedNodeCoordinates: { nr: number; x: number; y: number }[] = [];
+		const localRenderedNodeCoordinates: { node: NodeToDraw; x: number; y: number }[] = [];
 
 		const root = treeToDraw.root;
 		if (root.type === 'leaf') return;
@@ -57,10 +57,12 @@
 			const childX = treeWidth * (xCoordinates.get(child.nr) || 0.0) + margin;
 			const childY = treeHeight * (yCoordinates.get(child.nr) || 0.0) + margin;
 
-			localRenderedNodeCoordinates.push({ nr: child.nr, x: childX, y: childY });
+			localRenderedNodeCoordinates.push({ node: child, x: childX, y: childY });
 
 			// render branch
 
+			context.fillStyle = 'black';
+			context.strokeStyle = 'black';
 			context.beginPath();
 			context.moveTo(parentX, parentY);
 			context.lineTo(parentX, childY);
@@ -88,6 +90,15 @@
 				context.fillText(child.label, childX + 10, childY);
 			} else {
 				// render subtree
+
+				if (selectedNode === child) {
+					// render dot
+
+					context.beginPath();
+					context.arc(childX, childY, 4, 0, Math.PI * 2);
+					context.fillStyle = 'black';
+					context.fill();
+				}
 
 				renderNode(child.left, child);
 				renderNode(child.right, child);
@@ -178,7 +189,11 @@
 
 			const bucketWidth = (histogramEndX - histogramStartX) / child.heightDistribution.length;
 
-			context.fillStyle = 'rgba(100, 100, 100, 0.2)';
+			if (selectedNode === child) {
+				context.fillStyle = accentColor;
+			} else {
+				context.fillStyle = 'rgba(100, 100, 100, 0.2)';
+			}
 			context.beginPath();
 			context.moveTo(histogramStartX, childY);
 			context.lineTo(
@@ -218,8 +233,6 @@
 	}
 
 	function onclick(event: Event) {
-		if (!onClickNode) return;
-
 		const canvas = event.currentTarget as Canvas | null;
 		if (canvas === null) return;
 
@@ -233,20 +246,18 @@
 
 		const distanceThreshold = 10;
 
-		const nr = renderedNodeCoordinates
+		selectedNode = renderedNodeCoordinates
 			.map((c) => ({
-				nr: c.nr,
+				node: c.node,
 				distance: (x - c.x) ** 2 + (y - c.y) ** 2
 			}))
 			.sort((a, b) => a.distance - b.distance)
 			.filter((c) => c.distance < distanceThreshold ** 2)
-			.at(0);
-
-		if (nr !== undefined) onClickNode(nr.nr);
+			.at(0)?.node;
 	}
 </script>
 
-<div class="h-full min-h-0 w-full flex-1 p-4">
+<div class="h-full min-h-0 flex-1 p-4">
 	<div class="h-full w-full" bind:clientHeight={height} bind:clientWidth={width}>
 		{#if height && width && minHeight}
 			<Canvas height={minHeight} {width} {onclick}>

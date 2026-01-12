@@ -47,8 +47,12 @@ export function getTreeHeight(tree: TreeToDraw) {
 }
 
 export function getLeafLabels(tree: TreeToDraw) {
+	return getCladeLabels(tree.root);
+}
+
+export function getCladeLabels(node: NodeToDraw) {
 	const leafLabels: string[] = [];
-	collectLeafLabels(tree.root, leafLabels);
+	collectLeafLabels(node, leafLabels);
 	return leafLabels;
 }
 

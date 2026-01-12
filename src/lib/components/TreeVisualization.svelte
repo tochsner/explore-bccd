@@ -20,6 +20,8 @@
 	let height = $state<number>();
 	let width = $state<number>();
 
+	let hoveredNode = $state<NodeToDraw | undefined>();
+
 	const margin = 40;
 
 	let minHeight = $derived.by(() => {
@@ -56,7 +58,7 @@
 			context.textAlign = 'left';
 			context.textBaseline = 'middle';
 			context.fillStyle = 'rgb(50, 50, 50)';
-			context.fillText('Select a node to see more details.', 15, 40);
+			context.fillText('Select a node to see more details.', 15, 15);
 		}
 
 		function renderNode(child: NodeToDraw, parent: NodeToDraw) {
@@ -102,7 +104,7 @@
 				// render subtree
 
 				// render dot
-				if (selectedNode === child) {
+				if (selectedNode === child || hoveredNode === child) {
 					context.beginPath();
 					context.arc(childX, childY, 4, 0, Math.PI * 2);
 					context.fillStyle = 'black';
@@ -122,7 +124,7 @@
 		renderedNodeCoordinates = localRenderedNodeCoordinates;
 	};
 
-	const renderTimeAxis: Render = ({ context, width }) => {
+	const renderTimeAxis: Render = ({ context, width, height }) => {
 		const treeTimeHeight = getTreeHeight(treeToDraw);
 
 		const maxLabelWidth = getMaxLabelWidth(context);
@@ -138,8 +140,8 @@
 		// render line
 
 		context.beginPath();
-		context.moveTo(0, tickHeight / 2);
-		context.lineTo(treeWidth + margin + 10, tickHeight / 2);
+		context.moveTo(0, height - tickHeight / 2);
+		context.lineTo(treeWidth + margin + 10, height - tickHeight / 2);
 		context.stroke();
 
 		// render ticks
@@ -157,8 +159,8 @@
 
 			// render tick line
 			context.beginPath();
-			context.moveTo(tickX, 0);
-			context.lineTo(tickX, tickHeight);
+			context.moveTo(tickX, height);
+			context.lineTo(tickX, height - tickHeight);
 			context.stroke();
 
 			// render tick label
@@ -166,8 +168,29 @@
 			context.textAlign = 'center';
 			context.textBaseline = 'middle';
 			context.fillStyle = 'lightgray';
-			context.fillText(formatNumber(tickTime), tickX, tickHeight + 10);
+			context.fillText(formatNumber(tickTime), tickX, height - tickHeight - 10);
 		});
+
+		// render hovered tick
+
+		const activeNode = hoveredNode || selectedNode;
+		if (activeNode) {
+			const tickX = margin + treeWidth * (1 - activeNode.height / treeTimeHeight);
+
+			// render tick line
+			context.strokeStyle = accentColor;
+			context.beginPath();
+			context.moveTo(tickX, height);
+			context.lineTo(tickX, height - tickHeight);
+			context.stroke();
+
+			// render tick label
+			context.font = `12px sans-serif`;
+			context.textAlign = 'center';
+			context.textBaseline = 'middle';
+			context.fillStyle = accentColor;
+			context.fillText(formatNumber(activeNode.height), tickX, height - tickHeight - 10);
+		}
 	};
 
 	const renderDistributions: Render = ({ context, width, height }) => {
@@ -250,20 +273,28 @@
 	}
 
 	function onclick(event: Event) {
+		selectedNode = getClosestNode(event as MouseEvent);
+	}
+
+	function onmousemove(event: Event) {
+		hoveredNode = getClosestNode(event as MouseEvent);
+	}
+
+	function getClosestNode(event: MouseEvent) {
 		const canvas = event.currentTarget as Canvas | null;
-		if (canvas === null) return;
+		if (canvas === null) return undefined;
 
 		// translate mouse location to canvas coordinates
 
 		const rect: DOMRect = canvas.getBoundingClientRect();
-		const x = (event as MouseEvent).clientX - rect.x;
-		const y = (event as MouseEvent).clientY - rect.y;
+		const x = event.clientX - rect.x;
+		const y = event.clientY - rect.y;
 
 		// find node closest to click location
 
 		const distanceThreshold = 10;
 
-		selectedNode = renderedNodeCoordinates
+		return renderedNodeCoordinates
 			.map((c) => ({
 				node: c.node,
 				distance: (x - c.x) ** 2 + (y - c.y) ** 2
@@ -275,11 +306,17 @@
 </script>
 
 <div class="h-full min-h-0 flex-1 p-4">
-	<div class="h-full w-full" bind:clientHeight={height} bind:clientWidth={width}>
+	<div
+		class="h-full w-full"
+		bind:clientHeight={height}
+		bind:clientWidth={width}
+		class:cursor-pointer={!!hoveredNode}
+	>
 		{#if height && width && minHeight}
-			<Canvas height={minHeight} {width} {onclick}>
+			<Canvas height={minHeight} {width} {onclick} {onmousemove}>
 				<Layer render={renderTree} />
 				<Layer render={renderDistributions} />
+				<Layer render={renderTimeAxis} />
 				<Layer render={renderTimeAxis} />
 			</Canvas>
 		{/if}

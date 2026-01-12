@@ -117,7 +117,7 @@
 		/>
 	</label>
 
-	{#if !posteriorTreesLoaded}
+	{#if !posteriorTreesLoaded && !isLoadingPosterior}
 		<span>or</span>
 
 		<button

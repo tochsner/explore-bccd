@@ -117,34 +117,36 @@
 		/>
 	</label>
 
-	<span>or</span>
+	{#if !posteriorTreesLoaded}
+		<span>or</span>
 
-	<button
-		style="background: linear-gradient(45deg, hsla(324, 0%, 50%) 0%, hsla(324, 0%, 55%) 100%)"
-		class="flex h-[30px] w-[400px] cursor-pointer flex-col items-center justify-center gap-8 rounded-2xl border border-white/70 p-10 text-white shadow-lg shadow-gray-400/10 transition hover:scale-105"
-		onclick={loadExample}
-	>
-		{#if isLoadingPosterior}
-			<Spinner />
-			<span class="mb-2 text-center text-lg">Loading and parsing trees...</span>
-		{:else if !posteriorTreesLoaded}
-			<span class="text-center text-lg">Try out an example</span>
-		{:else}
-			<svg
-				xmlns="http://www.w3.org/2000/svg"
-				class="size-20 text-green-700"
-				viewBox="0 0 24 24"
-				fill="none"
-				stroke="currentColor"
-				stroke-width="2"
-				stroke-linecap="round"
-				stroke-linejoin="round"
-				><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path
-					d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"
-				/><path d="M9 12l2 2l4 -4" /></svg
-			>
+		<button
+			style="background: linear-gradient(45deg, hsla(324, 0%, 50%) 0%, hsla(324, 0%, 55%) 100%)"
+			class="flex h-[30px] w-[400px] cursor-pointer flex-col items-center justify-center gap-8 rounded-2xl border border-white/70 p-10 text-white shadow-lg shadow-gray-400/10 transition hover:scale-105"
+			onclick={loadExample}
+		>
+			{#if isLoadingPosterior}
+				<Spinner />
+				<span class="mb-2 text-center text-lg">Loading and parsing trees...</span>
+			{:else if !posteriorTreesLoaded}
+				<span class="text-center text-lg">Try out an example</span>
+			{:else}
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					class="size-20 text-green-700"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path
+						d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"
+					/><path d="M9 12l2 2l4 -4" /></svg
+				>
 
-			<span class="mb-2 text-center text-lg">Posterior trees loaded</span>
-		{/if}
-	</button>
+				<span class="mb-2 text-center text-lg">Posterior trees loaded</span>
+			{/if}
+		</button>
+	{/if}
 </div>

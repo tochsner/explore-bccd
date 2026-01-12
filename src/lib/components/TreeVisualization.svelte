@@ -6,6 +6,7 @@
 		type NodeToDraw,
 		type TreeToDraw
 	} from '$lib/algorithms/treeToDraw';
+	import { formatNumber } from '$lib/utils/formatter';
 	import { Canvas, Layer, type Render } from 'svelte-canvas';
 
 	let {
@@ -45,9 +46,18 @@
 		const root = treeToDraw.root;
 		if (root.type === 'leaf') return;
 
+		renderTip();
 		renderNode(root, root);
 		renderNode(root.left, root);
 		renderNode(root.right, root);
+
+		function renderTip() {
+			context.font = `italic 15px sans-serif`;
+			context.textAlign = 'left';
+			context.textBaseline = 'middle';
+			context.fillStyle = 'rgb(50, 50, 50)';
+			context.fillText('Select a node to see more details.', 15, 40);
+		}
 
 		function renderNode(child: NodeToDraw, parent: NodeToDraw) {
 			// renders the branch from parent leading up to child
@@ -91,11 +101,15 @@
 			} else {
 				// render subtree
 
+				// render dot
 				if (selectedNode === child) {
-					// render dot
-
 					context.beginPath();
 					context.arc(childX, childY, 4, 0, Math.PI * 2);
+					context.fillStyle = 'black';
+					context.fill();
+				} else {
+					context.beginPath();
+					context.arc(childX, childY, 2, 0, Math.PI * 2);
 					context.fillStyle = 'black';
 					context.fill();
 				}
@@ -130,7 +144,10 @@
 
 		// render ticks
 
-		const tickTimeGap = Math.pow(10, Math.floor(Math.log10(treeTimeHeight)));
+		const tickTimeGap = Math.min(
+			Math.pow(10, Math.floor(Math.log10(treeTimeHeight))),
+			treeTimeHeight / 4
+		);
 		const tickPixelGap = (tickTimeGap * width) / treeTimeHeight;
 		const numTicks = Math.floor(treeTimeHeight / tickTimeGap);
 
@@ -149,7 +166,7 @@
 			context.textAlign = 'center';
 			context.textBaseline = 'middle';
 			context.fillStyle = 'lightgray';
-			context.fillText(tickTime.toString(), tickX, tickHeight + 10);
+			context.fillText(formatNumber(tickTime), tickX, tickHeight + 10);
 		});
 	};
 
@@ -174,7 +191,7 @@
 			const childX = treeWidth * (xCoordinates.get(child.nr) || 0.0) + margin;
 			const childY = treeHeight * (yCoordinates.get(child.nr) || 0.0) + margin;
 
-			const histogramHeight = 50;
+			const histogramHeight = 70;
 
 			const histogramStartX =
 				(treeWidth * (treeTimeHeight - (child.heightDistribution.at(0)?.bucketStart || 0.0))) /

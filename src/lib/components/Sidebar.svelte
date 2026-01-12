@@ -11,7 +11,11 @@
 
 	let { node, onClose, worker }: Props = $props();
 
-	let cladeLabels = $derived(node ? getCladeLabels(node) : []);
+	let [leftCladeLabels, rightCladeLabels] = $derived.by(() => {
+		if (!node) return [[], []];
+		if (node.type === 'leaf') return [[node.label], []];
+		return [getCladeLabels(node.left), getCladeLabels(node.right)];
+	});
 
 	let isSplitsLoading = $state(false);
 	let potentialSplits: {
@@ -20,6 +24,8 @@
 		logDensity: number;
 	}[] = $state([]);
 	let error = $state();
+
+	let mainSplit = $derived(potentialSplits.at(0));
 
 	$effect(() => {
 		const handler = (e: MessageEvent<ErrorResponse | GetPotentialSplitsResponse>) => {
@@ -69,20 +75,23 @@
 		<div class="flex flex-col gap-1">
 			<h3 class="text-accent text-sm font-semibold uppercase">Selected Clade</h3>
 
-			<div class="flex flex-col gap-1 text-sm">
-				{#each cladeLabels.slice(0, 4) as label}
-					<span>{label}</span>
-				{/each}
-
-				{#if cladeLabels.length > 4}
-					<span class="italic">and {cladeLabels.length - 4} more taxa</span>
-				{/if}
+			<div class="flex flex-row gap-1 text-sm">
+				<div class="divide-accent grid grid-cols-2 divide-x">
+					<div class="flex flex-col items-stretch gap-1 pr-2">
+						{#each leftCladeLabels as label}
+							<span class="w-full truncate">{label}</span>
+						{/each}
+					</div>
+					<div class="flex flex-col items-stretch gap-1 pl-2">
+						{#each rightCladeLabels as label}
+							<span class="w-full truncate">{label}</span>
+						{/each}
+					</div>
+				</div>
 			</div>
 		</div>
 
 		{#if node.type === 'internal'}
-			{@const mainSplit = potentialSplits.at(0)}
-
 			<div class="flex flex-col gap-1">
 				<h3 class="text-accent text-sm font-semibold uppercase">Age Distribution</h3>
 				<span class="text-sm italic">(conditioned on topology)</span>

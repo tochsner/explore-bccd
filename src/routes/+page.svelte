@@ -54,7 +54,7 @@
 					<TreeVisualization treeToDraw={pointEstimate} bind:selectedNode />
 				</div>
 				{#if selectedNode}
-					<div class="w-[350px] shrink-0 p-4 pl-0">
+					<div class="top-0 h-full w-[375px] shrink-0 p-4 pl-0">
 						<Sidebar {worker} node={selectedNode} onClose={handleCloseSidebar} />
 					</div>
 				{/if}

@@ -1,9 +1,14 @@
-export function formatNumber(n: number) {
-	const abs = Math.abs(n);
+export function formatNumber(x: number) {
+	const ax = Math.abs(x);
 
-	if (abs >= 1e6 || (abs > 0 && abs < 1e-3)) {
-		return n.toExponential(1); // no decimal mantissa
+	// Keep large numbers as-is
+	if (ax >= 100) return String(x);
+
+	// Force scientific notation for very small numbers
+	if (ax > 0 && ax < 1e-3) {
+		return x.toExponential(1).replace('+', '');
 	}
 
-	return n.toFixed(1);
+	// Otherwise, keep at least 2 significant digits
+	return Number(x.toPrecision(2)).toString();
 }

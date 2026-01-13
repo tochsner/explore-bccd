@@ -20,6 +20,33 @@ export type LeafToDraw = {
 	label: string;
 };
 
+export type PossibleSplit = {
+	fingerprint: number;
+	leftLabels: string[];
+	rightLabels: string[];
+	logDensity: number;
+	isBestSplit: boolean;
+	isConditionedOn: boolean;
+};
+
+export type NodeDetails = {
+	split: {
+		fingerprint: number;
+		leftLabels: string[];
+		rightLabels: string[];
+		localLogDensity: number;
+		reason: 'bestSplit' | 'conditionedOn';
+	};
+	heightDistribution: Histogram;
+	alternativeSplits: {
+		fingerprint: number;
+		leftLabels: string[];
+		rightLabels: string[];
+		localLogDensity: number;
+		isBestSplit: boolean;
+	}[];
+};
+
 export type NodeToDraw = InternalNodeToDraw | LeafToDraw;
 
 export function numberOfLeavesToDraw(treeToDraw: TreeToDraw) {

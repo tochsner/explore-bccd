@@ -1,6 +1,6 @@
 // input message types
 
-import type { TreeToDraw } from '$lib/algorithms/treeToDraw';
+import type { NodeDetails, PossibleSplit, TreeToDraw } from '$lib/algorithms/treeToDraw';
 
 type ParsePosteriorTreesMessage = {
 	type: 'parsePosteriorTrees';
@@ -16,16 +16,29 @@ type BuildBCCDMessage = {
 	type: 'buildBCCD';
 };
 
-type GetPotentialSplitsMessages = {
-	type: 'getPotentialSplits';
+type GetNodeDetailsMessages = {
+	type: 'getNodeDetails';
 	nodeNr: number;
+};
+
+type ConditionOnSplitMessage = {
+	type: 'conditionOnSplit';
+	nodeNr: number;
+	splitFingerprint: number;
+};
+
+type RemoveConditioningOnSplitMessage = {
+	type: 'removeConditioningOnSplit';
+	cladeFingerprint: number;
 };
 
 export type TreeWorkerMessage =
 	| ParsePosteriorTreesMessage
 	| ParseSummaryTreeMessage
 	| BuildBCCDMessage
-	| GetPotentialSplitsMessages;
+	| GetNodeDetailsMessages
+	| ConditionOnSplitMessage
+	| RemoveConditioningOnSplitMessage;
 
 // output message types
 
@@ -43,17 +56,19 @@ export type BuiltBCCDResponse = {
 	pointEstimate: TreeToDraw;
 };
 
-export type GetPotentialSplitsResponse = {
+export type GetNodeDetailsResponse = {
 	success: true;
-	splits: {
-		leftLabels: string[];
-		rightLabels: string[];
-		logDensity: number;
-	}[];
+	details: NodeDetails;
+};
+
+export type UpdatedPointEstimateResponse = {
+	success: true;
+	pointEstimate: TreeToDraw;
 };
 
 export type TreeWorkerResponse =
 	| SuccessResponse
 	| ErrorResponse
 	| BuiltBCCDResponse
-	| GetPotentialSplitsResponse;
+	| GetNodeDetailsResponse
+	| UpdatedPointEstimateResponse;

@@ -1,9 +1,9 @@
 import digamma from '@stdlib/math/base/special/digamma';
 import mean from '@stdlib/stats/base/mean';
 import variance from '@stdlib/stats/base/variance';
-import { logpdf } from '@stdlib/stats/base/dists/beta';
-import { beta as sampleBeta } from '@stdlib/random/base';
-import { nelderMead } from 'fmin';
+import betaDist from '@stdlib/stats/base/dists/beta';
+import random from '@stdlib/random/base';
+import * as fmin from 'fmin';
 
 export type BetaParameters = {
 	alpha: number;
@@ -11,7 +11,7 @@ export type BetaParameters = {
 };
 
 export function betaLogDensity(x: number, { alpha, beta }: BetaParameters) {
-	return logpdf(x, alpha, beta);
+	return betaDist.logpdf(x, alpha, beta);
 }
 
 export function betaPointEstimate({ alpha, beta }: BetaParameters) {
@@ -19,7 +19,7 @@ export function betaPointEstimate({ alpha, beta }: BetaParameters) {
 }
 
 export function betaSample({ alpha, beta }: BetaParameters) {
-	return sampleBeta(alpha, beta);
+	return random.beta(alpha, beta);
 }
 
 /**
@@ -55,7 +55,7 @@ export function betaMLE(observations: number[]): BetaParameters {
 
 	const initialGuess = estimateBetaWithMoM(observations);
 
-	const solution = nelderMead(objectiveFunction, [initialGuess]);
+	const solution = fmin.nelderMead(objectiveFunction, [initialGuess]);
 	const beta = solution.x[0];
 
 	// calculate alpha
@@ -104,7 +104,7 @@ function inverseDigamma(y: number): number {
 	const initialGuess = Math.max(1 / Math.log(1 + Math.exp(-y)), 1e-10);
 
 	// use Nelder-Mead to minimize the squared error
-	const solution = nelderMead(objective, [initialGuess]);
+	const solution = fmin.nelderMead(objective, [initialGuess]);
 
 	return solution.x[0];
 }

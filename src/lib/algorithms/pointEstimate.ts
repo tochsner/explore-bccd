@@ -1,5 +1,5 @@
 import type { BCCD } from './bccd';
-import { fingerprint, getLeafNames, isLeaf, isRoot, type Clade } from './clade';
+import { getLeafNames, isLeaf, isRoot, type Clade } from './clade';
 import { logNormalPointEstimate, logNormalSample } from './logNormalDistribution';
 import type { CladeSplit } from './cladeSplit';
 import { betaLogDensity, betaPointEstimate, betaSample } from './betaDistribution';
@@ -8,6 +8,7 @@ import {
 	type NodeToDraw,
 	type LeafToDraw,
 	type InternalNodeToDraw,
+	type NodeDetails,
 	getCladeLabels
 } from './treeToDraw';
 import { getHistogram } from './histogram';
@@ -20,14 +21,16 @@ export class BCCDPointEstimator {
 	cladeSubtreeHeights: Map<number, number>;
 	splitSubtreeHeights: Map<number, number>;
 
-	pointEstimate: TreeToDraw;
-	pointEstimateNodes: Map<number, NodeToDraw>;
-
 	bestSplitsPerClade: Map<number, CladeSplit>;
 	bestSplitProbabilityPerClade: Map<number, number>;
 
+	pointEstimate!: TreeToDraw;
+	pointEstimateNodes: Map<number, NodeToDraw>;
 	cladeToNodeNr: Map<number, number>;
 	nodeNrToClade: Map<number, Clade>;
+
+	conditionedSplits: Map<number, CladeSplit>;
+
 	runningNodeNumber: number;
 
 	constructor(bccd: BCCD) {
@@ -38,6 +41,7 @@ export class BCCDPointEstimator {
 		this.bestSplitsPerClade = new Map();
 		this.bestSplitProbabilityPerClade = new Map();
 		this.nodeNrToClade = new Map();
+		this.conditionedSplits = new Map();
 		this.cladeToNodeNr = new Map();
 		this.pointEstimateNodes = new Map();
 		this.runningNodeNumber = 0;
@@ -45,54 +49,107 @@ export class BCCDPointEstimator {
 		this.collectCladeSubtreeLogDensities(bccd.rootClade);
 		this.cladeSubtreeHeights.set(this.bccd.rootClade.fingerprint, 1.0);
 
-		this.pointEstimate = this.buildPointEstimate();
+		this.updatePointEstimate();
 	}
 
-	private buildPointEstimate(): TreeToDraw {
+	conditionOnSplit(nodeNr: number, splitFingerprint: number) {
+		const clade = this.nodeNrToClade.get(nodeNr);
+		if (!clade) {
+			throw new Error('Trying to condition for unknown clade. This should not happen.');
+		}
+
+		const split = this.bccd.splits.get(splitFingerprint);
+		if (!split) {
+			throw new Error('Trying to condition on unknown split. This should not happen.');
+		}
+
+		this.conditionedSplits.set(clade.fingerprint, split);
+
+		this.updatePointEstimate();
+	}
+
+	removeConditioningOnSplit(cladeFingerprint: number) {
+		this.bccd.splits.delete(cladeFingerprint);
+		this.updatePointEstimate();
+	}
+
+	private updatePointEstimate() {
 		const treeHeight = logNormalPointEstimate(this.bccd.treeHeightDistribution);
 
 		this.runningNodeNumber = 0;
 		const pointEstimate = {
 			root: this.buildCladeSubtree(this.bccd.rootClade, treeHeight, 'pointEstimate').node
 		};
-
 		this.sampleHeightDistributions(pointEstimate);
 
-		return pointEstimate;
+		this.pointEstimate = pointEstimate;
 	}
 
-	getMostLikelyCladeSplits(cladeNr: number): {
-		leftLabels: string[];
-		rightLabels: string[];
-		logDensity: number;
-	}[] {
-		const clade = this.nodeNrToClade.get(cladeNr);
-		if (clade === undefined) return [];
+	getNodeDetails(nodeNr: number): NodeDetails {
+		const clade = this.nodeNrToClade.get(nodeNr);
+		if (!clade) {
+			throw new Error('Details requested for unknown node. This should not happen.');
+		}
 
-		return (
-			(this.bccd.splitsPerClade.get(clade.fingerprint) || [])
-				.values()
-				.toArray()
-				// get all possible splits
-				.map((fingerprint) => this.bccd.splits.get(fingerprint))
-				.filter((split) => !!split)
-				// attach local log densities
-				.map((split) => ({
-					...split,
-					logDensity: this.getLocalSplitLogDensity(split)
-				}))
-				// sort by density
-				.sort((a, b) => b.logDensity - a.logDensity)
-				// take the five most likely
-				.slice(0, 5)
-				.map((split) => {
-					return {
-						leftLabels: getLeafNames(this.bccd, split.clade1),
-						rightLabels: getLeafNames(this.bccd, split.clade2),
-						logDensity: split.logDensity
-					};
-				})
-		);
+		const nodeToDraw = this.pointEstimateNodes.get(nodeNr);
+		if (!nodeToDraw) {
+			throw new Error('Details requested for unknown node. This should not happen.');
+		}
+
+		if (nodeToDraw.type === 'leaf') {
+			throw new Error('Details requested for leaf. This is not supported.');
+		}
+
+		const selectedSplit =
+			this.conditionedSplits.get(clade.fingerprint) ||
+			this.bestSplitsPerClade.get(clade.fingerprint);
+		if (!selectedSplit) {
+			throw new Error('No split for clade found. This should not happen.');
+		}
+
+		const alternativeSplits = (this.bccd.splitsPerClade.get(clade.fingerprint) || [])
+			.values()
+			.toArray()
+			// get all possible splits
+			.map((fingerprint) => this.bccd.splits.get(fingerprint))
+			.filter((split) => !!split)
+			// attach local log densities
+			.map((split) => ({
+				...split,
+				logDensity: this.getLocalSplitLogDensity(split)
+			}))
+			// sort by density
+			.sort((a, b) => b.logDensity - a.logDensity)
+			// take the four most likely
+			.slice(0, 4)
+			// mark the best split
+			.map((split, idx) => ({
+				...split,
+				isBestSplit: idx === 0
+			}))
+			// remove the selected one
+			.filter((split) => split.fingerprint !== selectedSplit.fingerprint);
+
+		return {
+			split: {
+				fingerprint: selectedSplit.fingerprint,
+				leftLabels: getCladeLabels(nodeToDraw.left),
+				rightLabels: getCladeLabels(nodeToDraw.right),
+				localLogDensity: this.getLocalSplitLogDensity(selectedSplit),
+				reason:
+					this.conditionedSplits.get(clade.fingerprint) === selectedSplit
+						? 'conditionedOn'
+						: 'bestSplit'
+			},
+			heightDistribution: nodeToDraw.heightDistribution,
+			alternativeSplits: alternativeSplits.map((split, idx) => ({
+				fingerprint: split.fingerprint,
+				leftLabels: getLeafNames(this.bccd, split.clade1),
+				rightLabels: getLeafNames(this.bccd, split.clade2),
+				localLogDensity: split.logDensity,
+				isBestSplit: split.isBestSplit
+			}))
+		};
 	}
 
 	private collectCladeSubtreeLogDensities(clade: Clade) {
@@ -209,6 +266,7 @@ export class BCCDPointEstimator {
 				}
 			}
 		}
+
 		// set histogram
 
 		setHistograms(treeToDraw.root);
@@ -247,22 +305,24 @@ export class BCCDPointEstimator {
 			return { node, height };
 		}
 
-		// find best split
+		// choose split
 
-		const bestSplit = this.bestSplitsPerClade.get(clade.fingerprint);
-		if (bestSplit === undefined) {
+		const chosenSplit =
+			this.conditionedSplits.get(clade.fingerprint) ||
+			this.bestSplitsPerClade.get(clade.fingerprint);
+		if (chosenSplit === undefined) {
 			throw new Error('No best split for clade found. This should not happen.');
 		}
 
 		// build children
 
 		const { node: child1, height: childHeight1 } = this.buildCladeSubtree(
-			bestSplit.clade1,
+			chosenSplit.clade1,
 			treeHeight,
 			samplingMethod
 		);
 		const { node: child2, height: childHeight2 } = this.buildCladeSubtree(
-			bestSplit.clade2,
+			chosenSplit.clade2,
 			treeHeight,
 			samplingMethod
 		);
@@ -274,7 +334,7 @@ export class BCCDPointEstimator {
 		if (isRoot(clade)) {
 			height = treeHeight;
 		} else {
-			const betaParameters = this.bccd.splitRatioDistributions.get(bestSplit.fingerprint);
+			const betaParameters = this.bccd.splitRatioDistributions.get(chosenSplit.fingerprint);
 			if (betaParameters === undefined) {
 				throw new Error('No distribution found for clade. This should not happen.');
 			}

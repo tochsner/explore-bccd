@@ -12,7 +12,7 @@
 	let bccdBuilt = $state(false);
 
 	let pointEstimate = $state<TreeToDraw | undefined>();
-	let selectedNode = $state<NodeToDraw | undefined>();
+	let selectedNodeNr = $state<number | undefined>();
 
 	let stage = $derived.by(() => {
 		if (!posteriorTreesLoaded) return 'loadTrees';
@@ -28,7 +28,7 @@
 	});
 
 	function handleCloseSidebar() {
-		selectedNode = undefined;
+		selectedNodeNr = undefined;
 	}
 </script>
 
@@ -49,13 +49,18 @@
 		{:else if stage == 'explore' && pointEstimate}
 			<div class="flex h-full w-full min-w-0 flex-1">
 				<div
-					class={`min-w-0 flex-1 transition-all duration-300 ${selectedNode ? 'md:w-[calc(100%-350px)]' : ''}`}
+					class={`min-w-0 flex-1 transition-all duration-300 ${selectedNodeNr ? 'md:w-[calc(100%-350px)]' : ''}`}
 				>
-					<TreeVisualization treeToDraw={pointEstimate} bind:selectedNode />
+					<TreeVisualization treeToDraw={pointEstimate} bind:selectedNodeNr />
 				</div>
-				{#if selectedNode}
+				{#if selectedNodeNr}
 					<div class="top-0 h-full w-[375px] shrink-0 p-4 pl-0">
-						<Sidebar {worker} node={selectedNode} onClose={handleCloseSidebar} />
+						<Sidebar
+							{worker}
+							nodeNr={selectedNodeNr}
+							bind:pointEstimate
+							onClose={handleCloseSidebar}
+						/>
 					</div>
 				{/if}
 			</div>

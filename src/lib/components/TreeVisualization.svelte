@@ -11,15 +11,16 @@
 
 	let {
 		treeToDraw,
-		selectedNode = $bindable()
+		selectedNodeNr = $bindable()
 	}: {
 		treeToDraw: TreeToDraw;
-		selectedNode?: NodeToDraw;
+		selectedNodeNr?: number;
 	} = $props();
 
 	let height = $state<number>();
 	let width = $state<number>();
 
+	let selectedNode = $state<NodeToDraw | undefined>();
 	let hoveredNode = $state<NodeToDraw | undefined>();
 
 	const margin = 40;
@@ -62,6 +63,8 @@
 		}
 
 		function renderNode(child: NodeToDraw, parent: NodeToDraw) {
+			if (selectedNodeNr === child.nr) selectedNode = child;
+
 			// renders the branch from parent leading up to child
 
 			const parentX = treeWidth * (xCoordinates.get(parent.nr) || 0.0) + margin;
@@ -274,6 +277,7 @@
 
 	function onclick(event: Event) {
 		selectedNode = getClosestNode(event as MouseEvent);
+		selectedNodeNr = selectedNode?.nr;
 	}
 
 	function onmousemove(event: Event) {

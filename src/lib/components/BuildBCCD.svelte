@@ -1,41 +1,32 @@
 <script lang="ts">
-	import type { TreeToDraw } from '$lib/algorithms/treeToDraw';
-	import type { BuiltBCCDResponse, ErrorResponse } from '$lib/workers/messages';
+	import { type GlobalState } from '$lib/context/globalContext.svelte';
+	import { sendMessage } from '$lib/workers/tree-parser.worker';
 	import Spinner from './Spinner.svelte';
 
 	let {
 		worker,
 		bccdBuilt = $bindable(),
-		pointEstimate = $bindable()
+		globalState
 	}: {
 		worker: Worker;
 		bccdBuilt: boolean;
-		pointEstimate: TreeToDraw | undefined;
+		globalState: GlobalState;
 	} = $props();
 
 	let isBuilding = $state(true);
 	let error = $state<string | null>(null);
 
-	// trigger BCCD building when component mounts
 	$effect(() => {
-		const handler = (e: MessageEvent<ErrorResponse | BuiltBCCDResponse>) => {
-			if (e.data.success) {
-				bccdBuilt = true;
-				isBuilding = false;
-				pointEstimate = e.data.pointEstimate;
-			} else {
-				error = e.data.error;
-				isBuilding = false;
-			}
-			worker.removeEventListener('message', handler);
-		};
-
-		worker.addEventListener('message', handler);
-		worker.postMessage({ type: 'buildBCCD' });
-
-		return () => {
-			worker.removeEventListener('message', handler);
-		};
+		sendMessage(
+			{
+				type: 'buildBCCD'
+			},
+			worker
+		).then(() => {
+			bccdBuilt = true;
+			isBuilding = false;
+			globalState.synchronizeStateWithWorker(worker);
+		});
 	});
 </script>
 

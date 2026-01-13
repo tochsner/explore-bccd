@@ -30,6 +30,7 @@ export type PossibleSplit = {
 };
 
 export type NodeDetails = {
+	nodeNr: number;
 	split: {
 		fingerprint: number;
 		leftLabels: string[];
@@ -45,6 +46,12 @@ export type NodeDetails = {
 		localLogDensity: number;
 		isBestSplit: boolean;
 	}[];
+};
+
+export type ConditionedSplit = {
+	cladeFingerprint: number;
+	splitFingerprint: number;
+	nodeNr: number;
 };
 
 export type NodeToDraw = InternalNodeToDraw | LeafToDraw;

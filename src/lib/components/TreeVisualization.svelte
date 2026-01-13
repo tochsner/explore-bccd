@@ -1,21 +1,21 @@
 <script lang="ts">
 	import { TreeLayout } from '$lib/algorithms/treeLayout';
-	import {
-		getLeafLabels,
-		getTreeHeight,
-		type NodeToDraw,
-		type TreeToDraw
-	} from '$lib/algorithms/treeToDraw';
+	import { getLeafLabels, getTreeHeight, type NodeToDraw } from '$lib/algorithms/treeToDraw';
+	import type { GlobalState } from '$lib/context/globalContext.svelte';
 	import { formatNumber } from '$lib/utils/formatter';
 	import { Canvas, Layer, type Render } from 'svelte-canvas';
 
 	let {
-		treeToDraw,
-		selectedNodeNr = $bindable()
+		globalState,
+		worker
 	}: {
-		treeToDraw: TreeToDraw;
-		selectedNodeNr?: number;
+		globalState: GlobalState;
+		worker: Worker;
 	} = $props();
+
+	const { pointEstimate, selectedNodeDetails, hoveredNodeNr } = $derived(
+		globalState.getGlobalState()
+	);
 
 	let height = $state<number>();
 	let width = $state<number>();
@@ -26,12 +26,13 @@
 	const margin = 40;
 
 	let minHeight = $derived.by(() => {
-		const leafLabels = getLeafLabels(treeToDraw);
+		if (!pointEstimate) return 0.0;
+		const leafLabels = getLeafLabels(pointEstimate);
 		const minLeafGap = 15;
 		return Math.max(2 * margin + minLeafGap * (leafLabels.length - 1), height || 0.0);
 	});
 
-	const treeLayout = $derived(new TreeLayout(treeToDraw));
+	const treeLayout = $derived(new TreeLayout(pointEstimate));
 	const xCoordinates = $derived(treeLayout.getXCoordinates());
 	const yCoordinates = $derived(treeLayout.getYCoordinates());
 
@@ -40,13 +41,15 @@
 	const accentColor = getComputedStyle(document.body).getPropertyValue('--color-accent');
 
 	const renderTree: Render = ({ context, width, height }) => {
+		if (!pointEstimate) return;
+
 		const maxLabelWidth = getMaxLabelWidth(context);
 		const treeWidth = width - 2 * margin - maxLabelWidth;
 		const treeHeight = height - 2 * margin;
 
 		const localRenderedNodeCoordinates: { node: NodeToDraw; x: number; y: number }[] = [];
 
-		const root = treeToDraw.root;
+		const root = pointEstimate.root;
 		if (root.type === 'leaf') return;
 
 		renderTip();
@@ -63,7 +66,8 @@
 		}
 
 		function renderNode(child: NodeToDraw, parent: NodeToDraw) {
-			if (selectedNodeNr === child.nr) selectedNode = child;
+			if (selectedNodeDetails?.nodeNr === child.nr) selectedNode = child;
+			if (hoveredNodeNr === child.nr) hoveredNode = child;
 
 			// renders the branch from parent leading up to child
 
@@ -128,12 +132,14 @@
 	};
 
 	const renderTimeAxis: Render = ({ context, width, height }) => {
-		const treeTimeHeight = getTreeHeight(treeToDraw);
+		if (!pointEstimate) return;
+
+		const treeTimeHeight = getTreeHeight(pointEstimate);
 
 		const maxLabelWidth = getMaxLabelWidth(context);
 		const treeWidth = width - 2 * margin - maxLabelWidth;
 
-		const root = treeToDraw.root;
+		const root = pointEstimate.root;
 		if (root.type === 'leaf') return;
 
 		const tickHeight = 10;
@@ -197,14 +203,15 @@
 	};
 
 	const renderDistributions: Render = ({ context, width, height }) => {
-		const treeLayout = new TreeLayout(treeToDraw);
-		const treeTimeHeight = getTreeHeight(treeToDraw);
+		if (!pointEstimate) return;
+
+		const treeTimeHeight = getTreeHeight(pointEstimate);
 
 		const maxLabelWidth = getMaxLabelWidth(context);
 		const treeWidth = width - 2 * margin - maxLabelWidth;
 		const treeHeight = height - 2 * margin;
 
-		const root = treeToDraw.root;
+		const root = pointEstimate.root;
 		if (root.type === 'leaf') return;
 
 		renderNode(root, root);
@@ -267,21 +274,26 @@
 	};
 
 	function getMaxLabelWidth(context: CanvasRenderingContext2D) {
+		if (!pointEstimate) return 0.0;
+
 		context.font = `15px sans-serif`;
 		context.textAlign = 'left';
 		context.textBaseline = 'middle';
 		context.fillStyle = 'black';
 
-		return Math.max(...getLeafLabels(treeToDraw).map((label) => context.measureText(label).width));
+		return Math.max(
+			...getLeafLabels(pointEstimate).map((label) => context.measureText(label).width)
+		);
 	}
 
 	function onclick(event: Event) {
 		selectedNode = getClosestNode(event as MouseEvent);
-		selectedNodeNr = selectedNode?.nr;
+		globalState.setSelectedNodeNr(selectedNode?.nr, worker);
 	}
 
 	function onmousemove(event: Event) {
 		hoveredNode = getClosestNode(event as MouseEvent);
+		globalState.setHoveredNodeNr(hoveredNode?.nr);
 	}
 
 	function getClosestNode(event: MouseEvent) {

@@ -4,15 +4,13 @@
 	import BuildBCCD from '$lib/components/BuildBCCD.svelte';
 	import TreeVisualization from '$lib/components/TreeVisualization.svelte';
 	import Sidebar from '$lib/components/Sidebar.svelte';
+	import ConditionedSplitsPanel from '$lib/components/ConditionedSplitsPanel.svelte';
 	import TreeParserWorker from '$lib/workers/tree-parser.worker?worker';
-	import type { NodeToDraw, TreeToDraw } from '$lib/algorithms/treeToDraw';
+	import { createGlobalState } from '$lib/context/globalContext.svelte';
 
 	let worker: Worker | undefined = $state();
 	let posteriorTreesLoaded = $state(false);
 	let bccdBuilt = $state(false);
-
-	let pointEstimate = $state<TreeToDraw | undefined>();
-	let selectedNodeNr = $state<number | undefined>();
 
 	let stage = $derived.by(() => {
 		if (!posteriorTreesLoaded) return 'loadTrees';
@@ -20,20 +18,19 @@
 		else return 'explore';
 	});
 
+	const globalState = createGlobalState();
+	const hasSelectedNode = $derived(!!globalState.getSelectedNodeDetails());
+
 	onMount(() => {
 		worker = new TreeParserWorker();
 		return () => {
 			worker?.terminate();
 		};
 	});
-
-	function handleCloseSidebar() {
-		selectedNodeNr = undefined;
-	}
 </script>
 
 {#if worker}
-	<div class="flex h-full w-full flex-1 flex-col items-center overflow-y-scroll">
+	<div class="flex h-full w-full flex-1 flex-col items-center overflow-y-auto">
 		{#if stage == 'loadTrees'}
 			<div class="mx-auto w-full max-w-[900px] px-6 py-20">
 				<p
@@ -43,24 +40,21 @@
 				</p>
 			</div>
 
-			<FileUploadSection {worker} bind:posteriorTreesLoaded />
+			<FileUploadSection {worker} {globalState} bind:posteriorTreesLoaded />
 		{:else if stage == 'buildModel'}
-			<BuildBCCD {worker} bind:bccdBuilt bind:pointEstimate />
-		{:else if stage == 'explore' && pointEstimate}
-			<div class="flex h-full w-full min-w-0 flex-1">
+			<BuildBCCD {worker} {globalState} bind:bccdBuilt />
+		{:else if stage == 'explore'}
+			<div class="flex h-full w-full min-w-0 flex-1 items-stretch">
 				<div
-					class={`min-w-0 flex-1 transition-all duration-300 ${selectedNodeNr ? 'md:w-[calc(100%-350px)]' : ''}`}
+					class={`flex min-w-0 flex-1 flex-col transition-all duration-300 ${hasSelectedNode ? 'md:w-[calc(100%-350px)]' : ''}`}
 				>
-					<TreeVisualization treeToDraw={pointEstimate} bind:selectedNodeNr />
+					<TreeVisualization {worker} {globalState} />
+
+					<ConditionedSplitsPanel {worker} {globalState} />
 				</div>
-				{#if selectedNodeNr}
+				{#if hasSelectedNode}
 					<div class="top-0 h-full w-[375px] shrink-0 p-4 pl-0">
-						<Sidebar
-							{worker}
-							nodeNr={selectedNodeNr}
-							bind:pointEstimate
-							onClose={handleCloseSidebar}
-						/>
+						<Sidebar {worker} {globalState} />
 					</div>
 				{/if}
 			</div>

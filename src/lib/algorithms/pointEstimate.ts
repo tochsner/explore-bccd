@@ -69,7 +69,7 @@ export class BCCDPointEstimator {
 	}
 
 	removeConditioningOnSplit(cladeFingerprint: number) {
-		this.bccd.splits.delete(cladeFingerprint);
+		this.conditionedSplits.delete(cladeFingerprint);
 		this.updatePointEstimate();
 	}
 
@@ -131,6 +131,7 @@ export class BCCDPointEstimator {
 			.filter((split) => split.fingerprint !== selectedSplit.fingerprint);
 
 		return {
+			nodeNr,
 			split: {
 				fingerprint: selectedSplit.fingerprint,
 				leftLabels: getCladeLabels(nodeToDraw.left),
@@ -150,6 +151,26 @@ export class BCCDPointEstimator {
 				isBestSplit: split.isBestSplit
 			}))
 		};
+	}
+
+	getConditionedSplits() {
+		const conditionedSplitsInfo = [];
+
+		for (const [cladeFingerprint, split] of this.conditionedSplits.entries()) {
+			const nodeNr = this.cladeToNodeNr.get(cladeFingerprint);
+			if (!nodeNr) continue;
+
+			const nodeToDraw = this.pointEstimateNodes.get(nodeNr);
+			if (!nodeToDraw || nodeToDraw.type === 'leaf') continue;
+
+			conditionedSplitsInfo.push({
+				cladeFingerprint,
+				splitFingerprint: split.fingerprint,
+				nodeNr
+			});
+		}
+
+		return conditionedSplitsInfo;
 	}
 
 	private collectCladeSubtreeLogDensities(clade: Clade) {

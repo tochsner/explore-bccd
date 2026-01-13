@@ -1,13 +1,16 @@
 <script lang="ts">
+	import type { GlobalState } from '$lib/context/globalContext.svelte';
 	import type { TreeWorkerResponse } from '$lib/workers/messages';
 	import Spinner from './Spinner.svelte';
 
 	let {
 		worker,
-		posteriorTreesLoaded = $bindable()
+		posteriorTreesLoaded = $bindable(),
+		globalState
 	}: {
 		worker: Worker;
 		posteriorTreesLoaded: boolean;
+		globalState: GlobalState;
 	} = $props();
 
 	let isLoadingPosterior = $state(false);

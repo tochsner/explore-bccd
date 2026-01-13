@@ -1,88 +1,82 @@
-import { readTreesFromNexus, readNexus, Tree } from 'phylojs';
+import { readTreesFromNexus, Tree } from 'phylojs';
 import { BCCD } from '$lib/algorithms/bccd';
-import type { ErrorResponse, TreeWorkerMessage, TreeWorkerResponse } from './messages';
+import type { TreeWorkerMessage, TreeWorkerResponse } from './messages';
 import { BCCDPointEstimator } from '$lib/algorithms/pointEstimate';
 import { translateLabels } from '$lib/algorithms/treeUtils';
 
 class WorkerAPI {
 	private posteriorTrees: Tree[] | null = null;
-	private summaryTree: Tree | null = null;
 	private bccd: BCCD | null = null;
-	private pointEstimate: BCCDPointEstimator | null = null;
+	private pointEstimator: BCCDPointEstimator | null = null;
 
 	handleMessage(message: TreeWorkerMessage): TreeWorkerResponse {
 		try {
 			switch (message.type) {
-				case 'parsePosteriorTrees':
-					return this.parsePosteriorTrees(message.content);
+				case 'getGlobalStateMessage':
+					return { id: message.id, ...this.getGlobalState(message.selectedNodeNr) };
 
-				case 'parseSummaryTree':
-					return this.parseSummaryTree(message.content);
+				case 'parsePosteriorTrees':
+					this.parsePosteriorTrees(message.content);
+					break;
 
 				case 'buildBCCD':
-					return this.buildBCCD();
-
-				case 'getNodeDetails':
-					return this.getNodeDetails(message.nodeNr);
+					this.buildBCCD();
+					break;
 
 				case 'conditionOnSplit':
-					return this.conditionOnSplit(message.nodeNr, message.splitFingerprint);
+					this.conditionOnSplit(message.nodeNr, message.splitFingerprint);
+					break;
 
 				case 'removeConditioningOnSplit':
-					return this.removeConditioningOnSplit(message.cladeFingerprint);
+					this.removeConditioningOnSplit(message.cladeFingerprint);
+					break;
 			}
+
+			return { success: true, id: message.id };
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
 			return { success: false, error: message };
 		}
 	}
 
-	private parsePosteriorTrees(content: string): TreeWorkerResponse {
+	getGlobalState(selectedNodeNr?: number) {
+		return {
+			success: true as const,
+			pointEstimate: this.pointEstimator?.pointEstimate,
+			conditionedSplits: this.pointEstimator?.getConditionedSplits(),
+			selectedNodeDetails: !!selectedNodeNr
+				? this.pointEstimator?.getNodeDetails(selectedNodeNr)
+				: undefined
+		};
+	}
+
+	private parsePosteriorTrees(content: string) {
 		this.posteriorTrees = readTreesFromNexus(content);
 		this.posteriorTrees.forEach((tree) => tree.computeNodeHeights());
 		translateLabels(this.posteriorTrees, content);
-		return { success: true };
 	}
 
-	private parseSummaryTree(content: string): TreeWorkerResponse {
-		this.summaryTree = readNexus(content);
-		this.summaryTree.computeNodeHeights();
-		return { success: true };
-	}
-
-	private buildBCCD(): TreeWorkerResponse {
+	private buildBCCD() {
 		if (!this.posteriorTrees) {
 			return { success: false, error: 'Parse the posterior trees before building the BCCD.' };
 		}
 
 		this.bccd = new BCCD(this.posteriorTrees);
-		this.pointEstimate = new BCCDPointEstimator(this.bccd);
-
-		return { success: true, pointEstimate: this.pointEstimate.pointEstimate };
+		this.pointEstimator = new BCCDPointEstimator(this.bccd);
 	}
 
-	private getNodeDetails(nodeNr: number): TreeWorkerResponse {
-		return { success: true, details: this.pointEstimate?.getNodeDetails(nodeNr) };
-	}
-
-	private conditionOnSplit(nodeNr: number, splitFingerprint: number): TreeWorkerResponse {
-		if (!this.pointEstimate) {
+	private conditionOnSplit(nodeNr: number, splitFingerprint: number) {
+		if (!this.pointEstimator) {
 			return { success: false, error: 'Build the BCCD before conditioning on a split.' };
 		}
-
-		this.pointEstimate.conditionOnSplit(nodeNr, splitFingerprint);
-
-		return { success: true, pointEstimate: this.pointEstimate.pointEstimate };
+		this.pointEstimator.conditionOnSplit(nodeNr, splitFingerprint);
 	}
 
-	private removeConditioningOnSplit(cladeFingerprint: number): TreeWorkerResponse {
-		if (!this.pointEstimate) {
+	private removeConditioningOnSplit(cladeFingerprint: number) {
+		if (!this.pointEstimator) {
 			return { success: false, error: 'Build the BCCD before removing conditioning.' };
 		}
-
-		this.pointEstimate.removeConditioningOnSplit(cladeFingerprint);
-
-		return { success: true, pointEstimate: this.pointEstimate.pointEstimate };
+		this.pointEstimator.removeConditioningOnSplit(cladeFingerprint);
 	}
 }
 
@@ -97,8 +91,12 @@ export function sendMessage<E extends TreeWorkerResponse>(
 	message: TreeWorkerMessage,
 	worker: Worker
 ): Promise<E> {
+	const id = Math.random();
+	console.log(message);
 	return new Promise<E>((resolve, reject) => {
-		const handler = (e: MessageEvent<E | ErrorResponse>) => {
+		const handler = (e: MessageEvent<E>) => {
+			if (e.data.id !== id) return;
+
 			if (e.data.success) {
 				resolve(e.data as E);
 			} else {
@@ -107,6 +105,6 @@ export function sendMessage<E extends TreeWorkerResponse>(
 			worker.removeEventListener('message', handler);
 		};
 		worker.addEventListener('message', handler);
-		worker.postMessage(message);
+		worker.postMessage({ ...message, id });
 	});
 }

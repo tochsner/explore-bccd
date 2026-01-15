@@ -5,6 +5,7 @@
 	import TreeVisualization from '$lib/components/TreeVisualization.svelte';
 	import Sidebar from '$lib/components/Sidebar.svelte';
 	import ConditionedSplitsPanel from '$lib/components/ConditionedSplitsPanel.svelte';
+	import ExportSVGModal from '$lib/components/ExportSVGModal.svelte';
 	import TreeParserWorker from '$lib/workers/tree-parser.worker?worker';
 	import { createGlobalState } from '$lib/context/globalContext.svelte';
 
@@ -21,7 +22,8 @@
 	const globalState = createGlobalState();
 	const hasSelectedNode = $derived(!!globalState.getSelectedNodeDetails());
 
-	let exportSVG = $state<() => void>(() => {});
+	let exportSVG = $state<(width: number, height: number) => string>(() => '');
+	let exportModalOpen = $state(false);
 
 	onMount(() => {
 		worker = new TreeParserWorker();
@@ -39,7 +41,7 @@
 			<div class="flex gap-4">
 				<button
 					class="cursor-pointer rounded-lg border border-white bg-white/20 px-4 py-2 transition hover:bg-white/50"
-					onclick={() => exportSVG && exportSVG()}
+					onclick={() => (exportModalOpen = true)}
 				>
 					Export SVG
 				</button>
@@ -86,3 +88,5 @@
 		</div>
 	{/if}
 </div>
+
+<ExportSVGModal bind:open={exportModalOpen} getSVGString={exportSVG} />

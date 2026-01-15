@@ -14,7 +14,7 @@
 	}: {
 		globalState: GlobalState;
 		worker: Worker;
-		exportSVG: () => void;
+		exportSVG: (width: number, height: number) => string;
 	} = $props();
 
 	const { pointEstimate, selectedNodeDetails, hoveredNodeNr } = $derived(
@@ -315,39 +315,15 @@
 	}
 
 	$effect(() => {
-		exportSVG = () => {
-			// set up canvas
-
-			const width = 750;
-			const height = 750;
+		exportSVG = (width: number, height: number) => {
 			// @ts-ignore
 			const context = new C2SVG(width, height);
-
-			// render tree
 
 			renderTree({ context, width, height, time: 0 });
 			renderDistributions({ context, width, height, time: 0 });
 			renderTimeAxis({ context, width, height, time: 0 });
 
-			// convert to SVG
-
-			const serializedSVG = context.getSerializedSvg();
-
-			// download SVG as a file
-
-			const blob = new Blob([serializedSVG], { type: 'image/svg+xml' });
-			const url = URL.createObjectURL(blob);
-
-			const a = document.createElement('a');
-			a.href = url;
-			a.download = 'tree.svg';
-			document.body.appendChild(a);
-			a.click();
-			document.body.removeChild(a);
-
-			setTimeout(() => {
-				URL.revokeObjectURL(url);
-			}, 100);
+			return context.getSerializedSvg();
 		};
 	});
 </script>

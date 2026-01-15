@@ -21,6 +21,8 @@
 	const globalState = createGlobalState();
 	const hasSelectedNode = $derived(!!globalState.getSelectedNodeDetails());
 
+	let exportSVG = $state<() => void>(() => {});
+
 	onMount(() => {
 		worker = new TreeParserWorker();
 		return () => {
@@ -34,13 +36,21 @@
 		<span class="text-[1.8rem] font-bold">Explore<span class="text-accent">BCCD</span></span>
 
 		{#if stage === 'explore'}
-			<a
-				class="cursor-pointer rounded-lg border border-white bg-white/20 px-4 py-2 transition hover:bg-white/50"
-				href="/"
-				data-sveltekit-reload
-			>
-				Explore a different dataset
-			</a>
+			<div class="flex gap-4">
+				<button
+					class="cursor-pointer rounded-lg border border-white bg-white/20 px-4 py-2 transition hover:bg-white/50"
+					onclick={() => exportSVG && exportSVG()}
+				>
+					Export SVG
+				</button>
+				<a
+					class="cursor-pointer rounded-lg border border-white bg-white/20 px-4 py-2 transition hover:bg-white/50"
+					href="/"
+					data-sveltekit-reload
+				>
+					Explore a different dataset
+				</a>
+			</div>
 		{/if}
 	</header>
 	{#if worker}
@@ -62,7 +72,7 @@
 					<div
 						class={`flex min-w-0 flex-1 flex-col transition-all duration-300 ${hasSelectedNode ? 'md:w-[calc(100%-350px)]' : ''}`}
 					>
-						<TreeVisualization {worker} {globalState} />
+						<TreeVisualization {worker} {globalState} bind:exportSVG />
 
 						<ConditionedSplitsPanel {worker} {globalState} />
 					</div>

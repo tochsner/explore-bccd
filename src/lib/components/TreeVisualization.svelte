@@ -4,13 +4,16 @@
 	import type { GlobalState } from '$lib/context/globalContext.svelte';
 	import { formatNumber } from '$lib/utils/formatter';
 	import { Canvas, Layer, type Render } from 'svelte-canvas';
+	import C2SVG from 'canvas2svg';
 
 	let {
 		globalState,
-		worker
+		worker,
+		exportSVG = $bindable()
 	}: {
 		globalState: GlobalState;
 		worker: Worker;
+		exportSVG: () => void;
 	} = $props();
 
 	const { pointEstimate, selectedNodeDetails, hoveredNodeNr } = $derived(
@@ -32,13 +35,21 @@
 		return Math.max(2 * margin + minLeafGap * (leafLabels.length - 1), height || 0.0);
 	});
 
-	const treeLayout = $derived(new TreeLayout(pointEstimate));
-	const xCoordinates = $derived(treeLayout.getXCoordinates());
-	const yCoordinates = $derived(treeLayout.getYCoordinates());
+	const treeLayout = $derived(pointEstimate ? new TreeLayout(pointEstimate) : undefined);
+	const xCoordinates = $derived(treeLayout?.getXCoordinates() || new Map());
+	const yCoordinates = $derived(treeLayout?.getYCoordinates() || new Map());
 
 	let renderedNodeCoordinates = $state<{ node: NodeToDraw; x: number; y: number }[]>([]);
 
 	const accentColor = getComputedStyle(document.body).getPropertyValue('--color-accent');
+
+	const renderHints: Render = ({ context, width, height }) => {
+		context.font = `italic 15px sans-serif`;
+		context.textAlign = 'left';
+		context.textBaseline = 'middle';
+		context.fillStyle = 'rgb(50, 50, 50)';
+		context.fillText('Select a node to see more details.', 15, 15);
+	};
 
 	const renderTree: Render = ({ context, width, height }) => {
 		if (!pointEstimate) return;
@@ -52,18 +63,9 @@
 		const root = pointEstimate.root;
 		if (root.type === 'leaf') return;
 
-		renderTip();
 		renderNode(root, root);
 		renderNode(root.left, root);
 		renderNode(root.right, root);
-
-		function renderTip() {
-			context.font = `italic 15px sans-serif`;
-			context.textAlign = 'left';
-			context.textBaseline = 'middle';
-			context.fillStyle = 'rgb(50, 50, 50)';
-			context.fillText('Select a node to see more details.', 15, 15);
-		}
 
 		function renderNode(child: NodeToDraw, parent: NodeToDraw) {
 			if (selectedNodeDetails?.nodeNr === child.nr) selectedNode = child;
@@ -310,6 +312,43 @@
 			.filter((c) => c.distance < distanceThreshold ** 2)
 			.at(0)?.node;
 	}
+
+	$effect(() => {
+		exportSVG = () => {
+			// set up canvas
+
+			const width = 750;
+			const height = 750;
+			// @ts-ignore
+			const context = new C2SVG(width, height);
+
+			// render tree
+
+			renderTree({ context, width, height, time: 0 });
+			renderDistributions({ context, width, height, time: 0 });
+			renderTimeAxis({ context, width, height, time: 0 });
+
+			// convert to SVG
+
+			const serializedSVG = context.getSerializedSvg();
+
+			// download SVG as a file
+
+			const blob = new Blob([serializedSVG], { type: 'image/svg+xml' });
+			const url = URL.createObjectURL(blob);
+
+			const a = document.createElement('a');
+			a.href = url;
+			a.download = 'tree.svg';
+			document.body.appendChild(a);
+			a.click();
+			document.body.removeChild(a);
+
+			setTimeout(() => {
+				URL.revokeObjectURL(url);
+			}, 100);
+		};
+	});
 </script>
 
 <div class="h-full min-h-0 flex-1 p-4">
@@ -321,9 +360,9 @@
 	>
 		{#if height && width && minHeight}
 			<Canvas height={minHeight} {width} {onclick} {onmousemove}>
+				<Layer render={renderHints} />
 				<Layer render={renderTree} />
 				<Layer render={renderDistributions} />
-				<Layer render={renderTimeAxis} />
 				<Layer render={renderTimeAxis} />
 			</Canvas>
 		{/if}

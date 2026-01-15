@@ -246,24 +246,15 @@
 			}
 			context.beginPath();
 			context.moveTo(histogramStartX, childY);
-			context.lineTo(
-				histogramStartX,
-				childY - histogramHeight * child.heightDistribution[0].normalizedDensity
-			);
 
 			child.heightDistribution.forEach((bucket, index) => {
 				context.lineTo(
-					histogramStartX + (index + 1) * bucketWidth,
+					histogramStartX + index * bucketWidth,
 					childY - histogramHeight * bucket.normalizedDensity
 				);
 			});
 
-			context.lineTo(
-				histogramStartX,
-				childY -
-					histogramHeight *
-						child.heightDistribution[child.heightDistribution.length - 1].normalizedDensity
-			);
+			context.lineTo(histogramStartX, childY);
 			context.fill();
 
 			// render subtree

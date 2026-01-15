@@ -4,7 +4,7 @@ export type Histogram = {
 	normalizedDensity: number;
 }[];
 
-const NUM_BUCKETS = 20;
+const NUM_BUCKETS = 16;
 
 export function getHistogram(samples: number[]) {
 	if (!samples.length) {
@@ -13,9 +13,9 @@ export function getHistogram(samples: number[]) {
 
 	const sorted = [...samples].sort((a, b) => a - b);
 
-	// exclude 0.5% lowest, 0.5% highest (i.e., 99% central mass)
-	const lowerIdx = Math.floor(sorted.length * 0.005);
-	const upperIdx = Math.ceil(sorted.length * 0.995) - 1; // inclusive
+	// exclude 0.05% lowest, 0.05% highest (i.e., 99.9% central mass)
+	const lowerIdx = Math.floor(sorted.length * 0.0005);
+	const upperIdx = Math.ceil(sorted.length * 0.9995) - 1; // inclusive
 
 	const min = sorted[lowerIdx];
 	const max = sorted[upperIdx];

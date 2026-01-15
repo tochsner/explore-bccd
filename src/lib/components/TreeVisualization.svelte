@@ -4,6 +4,7 @@
 	import type { GlobalState } from '$lib/context/globalContext.svelte';
 	import { formatNumber } from '$lib/utils/formatter';
 	import { Canvas, Layer, type Render } from 'svelte-canvas';
+	// @ts-ignore
 	import C2SVG from 'canvas2svg';
 
 	let {

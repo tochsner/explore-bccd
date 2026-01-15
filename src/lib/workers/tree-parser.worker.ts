@@ -92,7 +92,6 @@ export function sendMessage<E extends TreeWorkerResponse>(
 	worker: Worker
 ): Promise<E> {
 	const id = Math.random();
-	console.log(message);
 	return new Promise<E>((resolve, reject) => {
 		const handler = (e: MessageEvent<E>) => {
 			if (e.data.id !== id) return;

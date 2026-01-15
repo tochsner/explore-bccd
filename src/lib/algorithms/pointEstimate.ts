@@ -1,6 +1,10 @@
 import type { BCCD } from './bccd';
 import { getLeafNames, isLeaf, isRoot, type Clade } from './clade';
-import { logNormalPointEstimate, logNormalSample } from './logNormalDistribution';
+import {
+	logNormalLogDensity,
+	logNormalPointEstimate,
+	logNormalSample
+} from './logNormalDistribution';
 import type { CladeSplit } from './cladeSplit';
 import { betaLogDensity, betaPointEstimate, betaSample } from './betaDistribution';
 import {
@@ -395,15 +399,35 @@ export class BCCDPointEstimator {
 			Math.log(this.bccd.numSplitOccurrences.get(split.fingerprint) || 0) -
 			Math.log(this.bccd.numCladeOccurrences.get(split.parent.fingerprint) || 0);
 
-		const betaParameters = this.bccd.splitRatioDistributions.get(split.fingerprint);
+		if (isRoot(split.parent)) {
+			// this is the root, we look at the tree height distribution
 
-		if (betaParameters === undefined) {
-			throw new Error('Split with no estimated parameters encountered. This should not happen.');
+			const logNormalParameters = this.bccd.treeHeightDistribution;
+
+			if (logNormalParameters === undefined) {
+				throw new Error('No tree height parameters encountered. This should not happen.');
+			}
+
+			const treeHeightPointEstimate = logNormalPointEstimate(logNormalParameters);
+			const pointEstimateLogDensity = logNormalLogDensity(
+				treeHeightPointEstimate,
+				logNormalParameters
+			);
+
+			return localCCDLogDensity + pointEstimateLogDensity;
+		} else {
+			// this is not the root, we look at the ratio distribution
+
+			const betaParameters = this.bccd.splitRatioDistributions.get(split.fingerprint);
+
+			if (betaParameters === undefined) {
+				throw new Error('Split with no estimated parameters encountered. This should not happen.');
+			}
+
+			const ratioPointEstimate = betaPointEstimate(betaParameters);
+			const pointEstimateLogDensity = betaLogDensity(ratioPointEstimate, betaParameters);
+
+			return localCCDLogDensity + pointEstimateLogDensity;
 		}
-
-		const ratioPointEstimate = betaPointEstimate(betaParameters);
-		const pointEstimateLogDensity = betaLogDensity(ratioPointEstimate, betaParameters);
-
-		return localCCDLogDensity + pointEstimateLogDensity;
 	}
 }

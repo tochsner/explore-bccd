@@ -328,7 +328,7 @@
 	});
 </script>
 
-<div class="h-full min-h-0 flex-1 p-4">
+<div class="h-full min-h-0 flex-1 overflow-y-auto p-4">
 	<div
 		class="h-full w-full"
 		bind:clientHeight={height}

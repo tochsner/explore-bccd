@@ -33,7 +33,9 @@
 	});
 </script>
 
-<div class="bg-background text-dark flex h-lvh w-lvw flex-col items-center font-sans">
+<div
+	class="bg-background text-dark flex h-lvh w-lvw flex-col items-center justify-stretch font-sans"
+>
 	<header class="bg-accent/10 z-10 flex w-full justify-between rounded-b-2xl px-8 py-4">
 		<span class="text-[1.8rem] font-bold">Explore<span class="text-accent">BCCD</span></span>
 
@@ -56,7 +58,7 @@
 		{/if}
 	</header>
 	{#if worker}
-		<div class="flex h-full w-full flex-1 flex-col items-center overflow-y-auto">
+		<div class="flex min-h-0 w-full flex-1 flex-col items-center">
 			{#if stage == 'loadTrees'}
 				<div class="mx-auto w-full max-w-[900px] px-6 py-20">
 					<p

@@ -2,6 +2,7 @@
 	import type { GlobalState } from '$lib/context/globalContext.svelte';
 	import { sendMessage } from '$lib/workers/tree-parser.worker';
 	import Histogram from './Histogram.svelte';
+	import HeightConditionModal from './HeightConditionModal.svelte';
 
 	let {
 		worker,
@@ -12,6 +13,7 @@
 	} = $props();
 
 	let nodeDetails = $derived(globalState.getSelectedNodeDetails());
+	let heightModalOpen = $state(false);
 
 	function conditionOnSplit(splitFingerprint: number) {
 		if (!nodeDetails?.nodeNr) return;
@@ -69,7 +71,7 @@
 					</span>
 				</div>
 
-				<div class="flex flex-row gap-1 text-sm">
+				<div class="flex flex-row gap-1 text-xs">
 					<div class="grid grid-cols-2 divide-x divide-gray-400">
 						<div class="flex flex-col items-stretch gap-1 pr-2">
 							{#each split.leftLabels as label}
@@ -92,6 +94,15 @@
 				<span class="text-sm italic">(conditioned on topology)</span>
 
 				<Histogram histogram={heightDistribution} />
+
+				<button
+					class="border-accent/10 hover:border-accent/40 cursor-pointer self-start rounded-md border bg-white px-3 py-[2px] text-sm transition"
+					onclick={() => (heightModalOpen = true)}
+				>
+					Condition on specific age
+				</button>
+
+				<HeightConditionModal bind:open={heightModalOpen} onConfirm={() => {}} />
 			</div>
 
 			<!-- alternative clade splits -->

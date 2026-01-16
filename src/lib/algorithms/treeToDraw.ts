@@ -54,6 +54,12 @@ export type ConditionedSplit = {
 	nodeNr: number;
 };
 
+export type ConditionedHeight = {
+	cladeFingerprint: number;
+	nodeNr: number;
+	height: number;
+};
+
 export type NodeToDraw = InternalNodeToDraw | LeafToDraw;
 
 export function numberOfLeavesToDraw(treeToDraw: TreeToDraw) {

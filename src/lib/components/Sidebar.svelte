@@ -28,6 +28,20 @@
 			globalState.synchronizeStateWithWorker(worker);
 		});
 	}
+
+	function conditionOnHeight(height: number) {
+		if (!nodeDetails?.nodeNr) return;
+		sendMessage(
+			{
+				type: 'conditionOnHeight',
+				nodeNr: nodeDetails?.nodeNr,
+				height
+			},
+			worker
+		).then(() => {
+			globalState.synchronizeStateWithWorker(worker);
+		});
+	}
 </script>
 
 {#if nodeDetails}
@@ -102,7 +116,7 @@
 					Condition on specific age
 				</button>
 
-				<HeightConditionModal bind:open={heightModalOpen} onConfirm={() => {}} />
+				<HeightConditionModal bind:open={heightModalOpen} onConfirm={conditionOnHeight} />
 			</div>
 
 			<!-- alternative clade splits -->

@@ -1,6 +1,11 @@
 // input message types
 
-import type { NodeDetails, TreeToDraw, ConditionedSplit } from '$lib/algorithms/treeToDraw';
+import type {
+	NodeDetails,
+	TreeToDraw,
+	ConditionedSplit,
+	ConditionedHeight
+} from '$lib/algorithms/treeToDraw';
 
 type ParsePosteriorTreesMessage = {
 	type: 'parsePosteriorTrees';
@@ -22,6 +27,17 @@ type RemoveConditioningOnSplitMessage = {
 	cladeFingerprint: number;
 };
 
+type ConditionOnHeightMessage = {
+	type: 'conditionOnHeight';
+	nodeNr: number;
+	height: number;
+};
+
+type RemoveConditioningOnHeightMessage = {
+	type: 'removeConditioningOnHeight';
+	cladeFingerprint: number;
+};
+
 type GetGlobalStateMessage = {
 	type: 'getGlobalStateMessage';
 	selectedNodeNr?: number;
@@ -32,6 +48,8 @@ export type TreeWorkerMessage = (
 	| BuildBCCDMessage
 	| ConditionOnSplitMessage
 	| RemoveConditioningOnSplitMessage
+	| ConditionOnHeightMessage
+	| RemoveConditioningOnHeightMessage
 	| GetGlobalStateMessage
 ) & {
 	id?: number;
@@ -51,6 +69,7 @@ export type GetGlobalStateResponse = {
 	success: true;
 	pointEstimate: TreeToDraw | undefined;
 	conditionedSplits: ConditionedSplit[] | undefined;
+	conditionedHeights: ConditionedHeight[] | undefined;
 	selectedNodeDetails: NodeDetails | undefined;
 };
 

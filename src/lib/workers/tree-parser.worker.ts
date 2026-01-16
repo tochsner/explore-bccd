@@ -30,6 +30,14 @@ class WorkerAPI {
 				case 'removeConditioningOnSplit':
 					this.removeConditioningOnSplit(message.cladeFingerprint);
 					break;
+
+				case 'conditionOnHeight':
+					this.conditionOnHeight(message.nodeNr, message.height);
+					break;
+
+				case 'removeConditioningOnHeight':
+					this.removeConditioningOnHeight(message.cladeFingerprint);
+					break;
 			}
 
 			return { success: true, id: message.id };
@@ -44,6 +52,7 @@ class WorkerAPI {
 			success: true as const,
 			pointEstimate: this.pointEstimator?.pointEstimate,
 			conditionedSplits: this.pointEstimator?.getConditionedSplits(),
+			conditionedHeights: this.pointEstimator?.getConditionedHeights(),
 			selectedNodeDetails: !!selectedNodeNr
 				? this.pointEstimator?.getNodeDetails(selectedNodeNr)
 				: undefined
@@ -58,7 +67,7 @@ class WorkerAPI {
 
 	private buildBCCD() {
 		if (!this.posteriorTrees) {
-			return { success: false, error: 'Parse the posterior trees before building the BCCD.' };
+			throw new Error('Parse the posterior trees before building the BCCD.');
 		}
 
 		this.bccd = new BCCD(this.posteriorTrees);
@@ -67,16 +76,28 @@ class WorkerAPI {
 
 	private conditionOnSplit(nodeNr: number, splitFingerprint: number) {
 		if (!this.pointEstimator) {
-			return { success: false, error: 'Build the BCCD before conditioning on a split.' };
+			throw new Error('Build the BCCD before conditioning on a split.');
 		}
 		this.pointEstimator.conditionOnSplit(nodeNr, splitFingerprint);
 	}
 
 	private removeConditioningOnSplit(cladeFingerprint: number) {
-		if (!this.pointEstimator) {
-			return { success: false, error: 'Build the BCCD before removing conditioning.' };
+		if (this.pointEstimator) {
+			this.pointEstimator.removeConditioningOnSplit(cladeFingerprint);
 		}
-		this.pointEstimator.removeConditioningOnSplit(cladeFingerprint);
+	}
+
+	private conditionOnHeight(nodeNr: number, height: number) {
+		if (!this.pointEstimator) {
+			throw new Error('Build the BCCD before conditioning on a height.');
+		}
+		this.pointEstimator.conditionOnHeight(nodeNr, height);
+	}
+
+	private removeConditioningOnHeight(cladeFingerprint: number) {
+		if (this.pointEstimator) {
+			this.pointEstimator.removeConditioningOnHeight(cladeFingerprint);
+		}
 	}
 }
 

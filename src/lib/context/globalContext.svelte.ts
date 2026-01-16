@@ -1,10 +1,16 @@
-import type { ConditionedSplit, NodeDetails, TreeToDraw } from '$lib/algorithms/treeToDraw';
+import type {
+	ConditionedHeight,
+	ConditionedSplit,
+	NodeDetails,
+	TreeToDraw
+} from '$lib/algorithms/treeToDraw';
 import type { GetGlobalStateResponse } from '$lib/workers/messages';
 import { sendMessage } from '$lib/workers/tree-parser.worker';
 
 export function createGlobalState() {
 	let pointEstimate = $state<TreeToDraw>();
 	let conditionedSplits = $state<ConditionedSplit[]>();
+	let conditionedHeights = $state<ConditionedHeight[]>();
 	let selectedNodeDetails = $state<NodeDetails>();
 	let hoveredNodeNr = $state<number>();
 
@@ -13,12 +19,16 @@ export function createGlobalState() {
 			return {
 				pointEstimate,
 				conditionedSplits,
+				conditionedHeights,
 				selectedNodeDetails,
 				hoveredNodeNr
 			};
 		},
 		getConditionedSplits() {
 			return conditionedSplits;
+		},
+		getConditionedHeights() {
+			return conditionedHeights;
 		},
 		getSelectedNodeDetails() {
 			return selectedNodeDetails;
@@ -46,6 +56,7 @@ export function createGlobalState() {
 				pointEstimate = response.pointEstimate;
 				selectedNodeDetails = response.selectedNodeDetails;
 				conditionedSplits = response.conditionedSplits;
+				conditionedHeights = response.conditionedHeights;
 			}
 		}
 	};

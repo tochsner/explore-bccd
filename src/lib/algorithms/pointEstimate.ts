@@ -34,6 +34,7 @@ export class BCCDPointEstimator {
 	nodeNrToClade: Map<number, Clade>;
 
 	conditionedSplits: Map<number, CladeSplit>;
+	conditionedHeights: Map<number, number>;
 
 	runningNodeNumber: number;
 
@@ -46,6 +47,7 @@ export class BCCDPointEstimator {
 		this.bestSplitProbabilityPerClade = new Map();
 		this.nodeNrToClade = new Map();
 		this.conditionedSplits = new Map();
+		this.conditionedHeights = new Map();
 		this.cladeToNodeNr = new Map();
 		this.pointEstimateNodes = new Map();
 		this.runningNodeNumber = 0;
@@ -74,6 +76,22 @@ export class BCCDPointEstimator {
 
 	removeConditioningOnSplit(cladeFingerprint: number) {
 		this.conditionedSplits.delete(cladeFingerprint);
+		this.updatePointEstimate();
+	}
+
+	conditionOnHeight(nodeNr: number, height: number) {
+		const clade = this.nodeNrToClade.get(nodeNr);
+		if (!clade) {
+			throw new Error('Trying to condition for unknown clade. This should not happen.');
+		}
+
+		this.conditionedHeights.set(clade.fingerprint, height);
+
+		this.updatePointEstimate();
+	}
+
+	removeConditioningOnHeight(cladeFingerprint: number) {
+		this.conditionedHeights.delete(cladeFingerprint);
 		this.updatePointEstimate();
 	}
 
@@ -164,9 +182,6 @@ export class BCCDPointEstimator {
 			const nodeNr = this.cladeToNodeNr.get(cladeFingerprint);
 			if (!nodeNr) continue;
 
-			const nodeToDraw = this.pointEstimateNodes.get(nodeNr);
-			if (!nodeToDraw || nodeToDraw.type === 'leaf') continue;
-
 			conditionedSplitsInfo.push({
 				cladeFingerprint,
 				splitFingerprint: split.fingerprint,
@@ -175,6 +190,23 @@ export class BCCDPointEstimator {
 		}
 
 		return conditionedSplitsInfo;
+	}
+
+	getConditionedHeights() {
+		const conditionedHeightsInfo = [];
+
+		for (const [cladeFingerprint, height] of this.conditionedHeights.entries()) {
+			const nodeNr = this.cladeToNodeNr.get(cladeFingerprint);
+			if (!nodeNr) continue;
+
+			conditionedHeightsInfo.push({
+				cladeFingerprint,
+				nodeNr,
+				height
+			});
+		}
+
+		return conditionedHeightsInfo;
 	}
 
 	private collectCladeSubtreeLogDensities(clade: Clade) {

@@ -69,6 +69,62 @@
 				</div>
 
 				<FileUploadSection {worker} {globalState} bind:posteriorTreesLoaded />
+
+				<span class="text-sn self-center px-2 pt-10 text-gray-500 italic">
+					All processing is local. Your data never leaves your device.
+				</span>
+
+				<div class="flex items-center gap-5 pt-16 pb-4">
+					<a
+						href="https://github.com/tochsner/explore-bccd"
+						aria-label="GitHub Repository"
+						target="_blank"
+						class="hover:border-accent/10 inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white/80 px-4 py-2 font-semibold text-gray-800 shadow transition hover:scale-105"
+					>
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							width="24"
+							height="24"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							class="icon icon-tabler icons-tabler-outline icon-tabler-brand-github"
+							><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path
+								d="M9 19c-4.3 1.4 -4.3 -2.5 -6 -3m12 5v-3.5c0 -1 .1 -1.4 -.5 -2c2.8 -.3 5.5 -1.4 5.5 -6a4.6 4.6 0 0 0 -1.3 -3.2a4.2 4.2 0 0 0 -.1 -3.2s-1.1 -.3 -3.5 1.3a12.3 12.3 0 0 0 -6.2 0c-2.4 -1.6 -3.5 -1.3 -3.5 -1.3a4.2 4.2 0 0 0 -.1 3.2a4.6 4.6 0 0 0 -1.3 3.2c0 4.6 2.7 5.7 5.5 6c-.6 .6 -.6 1.2 -.5 2v3.5"
+							/></svg
+						>
+						GitHub
+					</a>
+
+					<hr class="my-2 h-full border-l border-gray-300" />
+
+					<span class="text-base font-medium text-gray-700">Check out</span>
+
+					<div class="flex flex-row gap-4">
+						<a
+							href="https://phylodata.com"
+							target="_blank"
+							class="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white/80 px-4 py-2 font-semibold shadow transition hover:scale-105"
+						>
+							<span>
+								<span style="color: #54763E;">Phylo</span>Data
+							</span>
+						</a>
+						<a
+							href="https://codephylo.github.io/phylospec/"
+							target="_blank"
+							rel="noopener noreferrer"
+							class="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white/80 px-4 py-2 font-semibold shadow transition hover:scale-105"
+						>
+							<span>
+								<span style="color: #17897D;">Phylo</span>Spec
+							</span>
+						</a>
+					</div>
+				</div>
 			{:else if stage == 'buildModel'}
 				<BuildBCCD {worker} {globalState} bind:bccdBuilt />
 			{:else if stage == 'explore'}

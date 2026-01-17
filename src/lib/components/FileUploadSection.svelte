@@ -70,7 +70,7 @@
 <div class="flex flex-col items-center justify-between gap-6">
 	<label
 		style="background: linear-gradient(45deg, hsla(324, 35%, 40%) 0%, hsla(324, 30%, 45%) 100%)"
-		class="flex h-[250px] w-[400px] cursor-pointer flex-col items-center justify-center gap-8 rounded-2xl border border-white/70 p-14 text-white shadow-lg shadow-gray-400/10 transition hover:scale-105"
+		class="flex h-[200px] w-[400px] cursor-pointer flex-col items-center justify-center gap-8 rounded-2xl border border-white/70 p-10 text-white shadow-lg shadow-gray-400/10 transition hover:scale-105"
 	>
 		{#if isLoadingPosterior}
 			<Spinner />
@@ -91,7 +91,9 @@
 				<path d="M7 9l5 -5l5 5" />
 				<path d="M12 4l0 12" />
 			</svg>
-			<span class="mb-2 text-center text-lg">Upload your posterior trees (.trees)</span>
+			<span class="mb-2 text-center text-lg font-semibold"
+				>Upload your posterior trees (.trees)</span
+			>
 		{:else}
 			<svg
 				xmlns="http://www.w3.org/2000/svg"
@@ -121,18 +123,18 @@
 	</label>
 
 	{#if !posteriorTreesLoaded && !isLoadingPosterior}
-		<span>or</span>
+		<span class="italic">or</span>
 
 		<button
-			style="background: linear-gradient(45deg, hsla(324, 0%, 50%) 0%, hsla(324, 0%, 55%) 100%)"
-			class="flex h-[30px] w-[400px] cursor-pointer flex-col items-center justify-center gap-8 rounded-2xl border border-white/70 p-10 text-white shadow-lg shadow-gray-400/10 transition hover:scale-105"
+			style="background: linear-gradient(45deg, hsla(324, 0%, 55%) 0%, hsla(324, 0%, 50%) 100%)"
+			class="flex h-[30px] w-[400px] cursor-pointer flex-col items-center justify-center gap-8 rounded-2xl border border-white/70 p-10 text-white shadow-lg shadow-gray-400/10 transition hover:scale-105 hover:opacity-95"
 			onclick={loadExample}
 		>
 			{#if isLoadingPosterior}
 				<Spinner />
 				<span class="mb-2 text-center text-lg">Loading and parsing trees...</span>
 			{:else if !posteriorTreesLoaded}
-				<span class="text-center text-lg">Try out an example</span>
+				<span class="text-center text-lg font-semibold">Try out an example</span>
 			{:else}
 				<svg
 					xmlns="http://www.w3.org/2000/svg"

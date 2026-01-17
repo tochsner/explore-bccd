@@ -449,6 +449,8 @@ export class BCCDPointEstimator {
 	}
 
 	private applyHeightConditionsToTree(tree: TreeToDraw) {
+		if (this.conditionedHeights.size === 0) return 0.0;
+
 		return this.applyHeightConditionsToSubtree(tree.root).logJacobianCorrection;
 	}
 

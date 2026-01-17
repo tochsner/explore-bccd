@@ -36,7 +36,7 @@
 	let minHeight = $derived.by(() => {
 		if (!pointEstimate) return 0.0;
 		const leafLabels = getLeafLabels(pointEstimate);
-		const minLeafGap = 15;
+		const minLeafGap = 20;
 		return Math.max(2 * margin + minLeafGap * (leafLabels.length - 1), height || 0.0);
 	});
 
@@ -170,16 +170,17 @@
 
 		// render ticks
 
-		const tickTimeGap = Math.min(
-			Math.pow(10, Math.floor(Math.log10(treeTimeHeight))),
-			treeTimeHeight / 4
-		);
-		const tickPixelGap = (tickTimeGap * width) / treeTimeHeight;
-		const numTicks = Math.floor(treeTimeHeight / tickTimeGap);
+		let tickTimeGap = Math.pow(10, Math.floor(Math.log10(treeTimeHeight)));
+		let numTicks = Math.floor(treeTimeHeight / tickTimeGap) + 1;
+
+		if (numTicks === 2) {
+			tickTimeGap = Math.pow(10, Math.floor(Math.log10(treeTimeHeight) - 1));
+			numTicks = Math.floor(treeTimeHeight / tickTimeGap) + 1;
+		}
 
 		[...Array(numTicks).keys()].forEach((tick) => {
-			const tickX = margin + treeWidth - tick * tickPixelGap;
 			const tickTime = tick * tickTimeGap;
+			const tickX = margin + treeWidth * (1 - tickTime / treeTimeHeight);
 
 			// render tick line
 			context.beginPath();

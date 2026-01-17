@@ -1,38 +1,69 @@
-# sv
+# ExploreBCCD
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+A web application for exploring phylogenetic posterior tree distributions using the BCCD (CCD1 with the Height-Short branch extension) model.
 
-## Creating a project
+## Features
 
-If you're seeing this, you've probably already done this step. Congrats!
+- **Interactive tree visualization** – Explore the tree structure with clade probabilities and split statistics
+- **Split conditioning** – Condition on clade splits to analyze constrained distributions
+- **Height conditioning** – Condition on node heights to analyze constrained distributions
+- **SVG export** – Export visualizations for publications and presentations
+- **Privacy-focused** – All processing happens locally in your browser
 
-```sh
-# create a new project in the current directory
-npx sv create
+## Tech Stack
 
-# create a new project in my-app
-npx sv create my-app
+- [Svelte 5](https://svelte.dev/) with [SvelteKit](https://svelte.dev/docs/kit)
+- [Bun](https://bun.sh/) as runtime and package manager
+- [Vite](https://vite.dev/) for development and bundling
+- [Tailwind CSS 4](https://tailwindcss.com/) for styling
+- [TypeScript](https://www.typescriptlang.org/)
+- [Web Workers](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Using_web_workers) for asynchronous processing without halting the UI thread.
+
+## Getting Started
+
+### Prerequisites
+
+Install [Bun](https://bun.sh/):
+
+```bash
+curl -fsSL https://bun.sh/install | bash
 ```
 
-## Developing
+### Installation
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
-
-```sh
-npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
+```bash
+bun install
 ```
 
-## Building
+### Development
 
-To create a production version of your app:
+Start the development server:
 
-```sh
-npm run build
+```bash
+bun run dev
 ```
 
-You can preview the production build with `npm run preview`.
+The app will be available at `http://localhost:5173`.
 
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+### Build
+
+Create a production build:
+
+```bash
+bun run build
+```
+
+Preview the production build:
+
+```bash
+bun run preview
+```
+
+### Other Commands
+
+```bash
+bun run check      # Run svelte-check for type errors
+bun run lint       # Check formatting and lint
+bun run format     # Auto-format code with Prettier
+bun run test       # Run tests with Vitest
+```

@@ -37,7 +37,9 @@
 	class="bg-background text-dark flex h-lvh w-lvw flex-col items-center justify-stretch font-sans"
 >
 	<header class="bg-accent/10 z-10 flex w-full justify-between rounded-b-2xl px-8 py-4">
-		<span class="text-[1.8rem] font-bold">Explore<span class="text-accent">BCCD</span></span>
+		<a href="/" data-sveltekit-reload class="text-[1.8rem] font-bold"
+			>Explore<span class="text-accent">BCCD</span></a
+		>
 
 		{#if stage === 'explore'}
 			<div class="flex gap-4">

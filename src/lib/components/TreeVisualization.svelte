@@ -257,7 +257,7 @@
 				);
 			});
 
-			context.lineTo(histogramStartX, childY);
+			context.lineTo(histogramEndX, childY);
 			context.fill();
 
 			// render subtree

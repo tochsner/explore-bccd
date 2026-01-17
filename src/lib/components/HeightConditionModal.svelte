@@ -52,8 +52,10 @@
 			</div>
 
 			<p class="mb-4 text-sm">
-				This allows to explore the distribution conditioned on the age of this clade. This also
-				conditions on this clade occuring in the tree.
+				This allows to explore the distribution conditioned on the age of this clade. <span
+					class="font-semibold"
+					>This only affects the other age distributions, not the displayed tree topology</span
+				>.
 			</p>
 
 			<div class="flex justify-end gap-2">

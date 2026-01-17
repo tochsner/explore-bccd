@@ -58,6 +58,8 @@ export class BCCDPointEstimator {
 		this.updatePointEstimate();
 	}
 
+	/** public getters and setters */
+
 	conditionOnSplit(nodeNr: number, splitFingerprint: number) {
 		const clade = this.nodeNrToClade.get(nodeNr);
 		if (!clade) {
@@ -95,18 +97,6 @@ export class BCCDPointEstimator {
 		this.updatePointEstimate();
 	}
 
-	private updatePointEstimate() {
-		const treeHeight = logNormalPointEstimate(this.bccd.treeHeightDistribution);
-
-		this.runningNodeNumber = 0;
-		const pointEstimate = {
-			root: this.buildCladeSubtree(this.bccd.rootClade, treeHeight, 'pointEstimate').node
-		};
-		this.sampleHeightDistributions(pointEstimate);
-
-		this.pointEstimate = pointEstimate;
-	}
-
 	getNodeDetails(nodeNr: number): NodeDetails {
 		const clade = this.nodeNrToClade.get(nodeNr);
 		if (!clade) {
@@ -138,7 +128,7 @@ export class BCCDPointEstimator {
 			// attach local log densities
 			.map((split) => ({
 				...split,
-				logDensity: this.getLocalSplitLogDensity(split)
+				logDensity: this.getUnnormalizedLocalSplitLogDensity(split)
 			}))
 			// sort by density
 			.sort((a, b) => b.logDensity - a.logDensity)
@@ -158,7 +148,7 @@ export class BCCDPointEstimator {
 				fingerprint: selectedSplit.fingerprint,
 				leftLabels: getCladeLabels(nodeToDraw.left),
 				rightLabels: getCladeLabels(nodeToDraw.right),
-				localLogDensity: this.getLocalSplitLogDensity(selectedSplit),
+				localLogDensity: this.getUnnormalizedLocalSplitLogDensity(selectedSplit),
 				reason:
 					this.conditionedSplits.get(clade.fingerprint) === selectedSplit
 						? 'conditionedOn'
@@ -208,6 +198,8 @@ export class BCCDPointEstimator {
 
 		return conditionedHeightsInfo;
 	}
+
+	/** methods to collect and cache the best subtree densities */
 
 	private collectCladeSubtreeLogDensities(clade: Clade) {
 		if (isLeaf(clade)) {
@@ -285,6 +277,8 @@ export class BCCDPointEstimator {
 				this.cladeSubtreeHeights.get(split.clade2.fingerprint) || 0.0
 			);
 
+			// note that we assume a tree height of 1. This is fine as long as we only use these
+			// to rank the splits
 			const jacobianCorrection = -Math.log(1.0 - olderChildHeight);
 
 			localHSBLogDensity = pointEstimateLogDensity + jacobianCorrection;
@@ -300,22 +294,32 @@ export class BCCDPointEstimator {
 		return splitDensity;
 	}
 
+	/** methods to obtain point estimates and samples */
+
+	private updatePointEstimate() {
+		this.pointEstimate = this.buildTree('pointEstimate');
+		this.applyHeightConditionsToTree(this.pointEstimate);
+		this.sampleHeightDistributions(this.pointEstimate);
+	}
+
 	private sampleHeightDistributions(treeToDraw: TreeToDraw) {
-		const numSamples = 10_000;
+		const numSamples = 30_000;
 
-		const heightsPerNode = new Map<number, number[]>();
+		const heightsPerNode = new Map<number, [number, number][]>();
 		for (let i = 0; i < numSamples; i++) {
-			const treeHeight = logNormalSample(this.bccd.treeHeightDistribution);
+			const { root } = this.buildTree('sample');
 
-			this.runningNodeNumber = 0;
-			const { node } = this.buildCladeSubtree(this.bccd.rootClade, treeHeight, 'sample');
+			const rawLogDensity = this.getSubTreeLogDensity(root, root.height);
+			const jacobianCorrection = this.applyHeightConditionsToTree({ root });
+			const importanceLogDensity = rawLogDensity + jacobianCorrection;
+			const importanceLogWeight = importanceLogDensity - rawLogDensity;
 
 			// collect height samples per node nr
 
-			collectHeightsPerNode(node);
+			collectHeightsPerNode(root);
 			function collectHeightsPerNode(node: NodeToDraw) {
 				if (!heightsPerNode.has(node.nr)) heightsPerNode.set(node.nr, []);
-				heightsPerNode.get(node.nr)?.push(node.height);
+				heightsPerNode.get(node.nr)?.push([node.height, Math.exp(importanceLogWeight)]);
 
 				if (node.type === 'internal') {
 					collectHeightsPerNode(node.left);
@@ -339,6 +343,21 @@ export class BCCDPointEstimator {
 		}
 	}
 
+	private buildTree(samplingMethod: 'pointEstimate' | 'sample'): TreeToDraw {
+		let treeHeight;
+		if (samplingMethod == 'pointEstimate') {
+			treeHeight = logNormalPointEstimate(this.bccd.treeHeightDistribution);
+		} else {
+			treeHeight = logNormalSample(this.bccd.treeHeightDistribution);
+		}
+
+		this.runningNodeNumber = 0;
+		const { node: root } = this.buildCladeSubtree(this.bccd.rootClade, treeHeight, samplingMethod);
+		const tree = { root };
+
+		return tree;
+	}
+
 	private buildCladeSubtree(
 		clade: Clade,
 		treeHeight: number,
@@ -350,7 +369,8 @@ export class BCCDPointEstimator {
 				type: 'leaf',
 				nr: this.runningNodeNumber++,
 				height,
-				label: clade.label
+				label: clade.label,
+				cladeFingerprint: clade.fingerprint
 			};
 
 			if (samplingMethod === 'pointEstimate') {
@@ -414,7 +434,9 @@ export class BCCDPointEstimator {
 			height,
 			left: child1,
 			right: child2,
-			heightDistribution: []
+			heightDistribution: [],
+			cladeFingerprint: clade.fingerprint,
+			splitFingerprint: chosenSplit.fingerprint
 		};
 
 		if (samplingMethod === 'pointEstimate') {
@@ -426,7 +448,103 @@ export class BCCDPointEstimator {
 		return { node, height };
 	}
 
-	private getLocalSplitLogDensity(split: CladeSplit) {
+	private applyHeightConditionsToTree(tree: TreeToDraw) {
+		return this.applyHeightConditionsToSubtree(tree.root).logJacobianCorrection;
+	}
+
+	private applyHeightConditionsToSubtree(
+		node: NodeToDraw,
+		previousCondition?: {
+			sampledHeight: number;
+			conditionedHeight: number;
+		}
+	): {
+		nextCondition: {
+			sampledHeight: number;
+			conditionedHeight: number;
+		};
+		logJacobianCorrection: number;
+	} {
+		if (node.type === 'leaf') {
+			return {
+				nextCondition: {
+					sampledHeight: 0,
+					conditionedHeight: 0
+				},
+				logJacobianCorrection: 0
+			};
+		}
+
+		const conditionedHeight = this.conditionedHeights.get(node.cladeFingerprint);
+		if (conditionedHeight !== undefined) {
+			previousCondition = {
+				sampledHeight: node.height,
+				conditionedHeight
+			};
+		}
+
+		const { nextCondition: leftNextCondition, logJacobianCorrection: leftLogJacobianCorrection } =
+			this.applyHeightConditionsToSubtree(node.left, previousCondition);
+		const { nextCondition: rightNextCondition, logJacobianCorrection: rightLogJacobianCorrection } =
+			this.applyHeightConditionsToSubtree(node.right, previousCondition);
+
+		let nextCondition;
+		if (rightNextCondition.conditionedHeight < leftNextCondition.conditionedHeight) {
+			nextCondition = leftNextCondition;
+		} else {
+			nextCondition = rightNextCondition;
+		}
+
+		let localJacobianCorrection = 0;
+
+		if (conditionedHeight !== undefined) {
+			node.height = conditionedHeight;
+			nextCondition = previousCondition;
+		} else if (!!previousCondition) {
+			const scale =
+				(previousCondition.conditionedHeight - nextCondition.conditionedHeight) /
+				(previousCondition.sampledHeight - nextCondition.sampledHeight);
+
+			node.height =
+				nextCondition.conditionedHeight + (node.height - nextCondition.sampledHeight) * scale;
+			localJacobianCorrection = -Math.log(scale);
+		} else {
+			node.height = nextCondition.conditionedHeight + (node.height - nextCondition.sampledHeight);
+		}
+
+		return {
+			nextCondition,
+			logJacobianCorrection:
+				localJacobianCorrection + leftLogJacobianCorrection + rightLogJacobianCorrection
+		};
+	}
+
+	/** methods to compute the density */
+
+	private getSubTreeLogDensity(node: NodeToDraw, treeHeight: number): number {
+		if (node.type === 'leaf') return 0.0;
+
+		const split = this.bccd.splits.get(node.splitFingerprint);
+		if (!split) {
+			throw new Error('Tried to get density for unknown split. This should not happen.');
+		}
+
+		// get local density
+
+		const olderChildHeight = Math.max(node.left.height, node.right.height);
+
+		const unnormalizedLocalSplitLogDensity = this.getUnnormalizedLocalSplitLogDensity(split);
+		const jacobianCorrection = this.getLogJacobianCorrection(split, treeHeight, olderChildHeight);
+
+		// get child subtree densities
+
+		const leftDensity = this.getSubTreeLogDensity(node.left, treeHeight);
+		const rightDensity = this.getSubTreeLogDensity(node.right, treeHeight);
+
+		return unnormalizedLocalSplitLogDensity + jacobianCorrection + leftDensity + rightDensity;
+	}
+
+	private getUnnormalizedLocalSplitLogDensity(split: CladeSplit) {
 		const localCCDLogDensity =
 			Math.log(this.bccd.numSplitOccurrences.get(split.fingerprint) || 0) -
 			Math.log(this.bccd.numCladeOccurrences.get(split.parent.fingerprint) || 0);
@@ -459,7 +577,27 @@ export class BCCDPointEstimator {
 			const ratioPointEstimate = betaPointEstimate(betaParameters);
 			const pointEstimateLogDensity = betaLogDensity(ratioPointEstimate, betaParameters);
 
+			// note that for the proper normalized density, we would have to add the Jacobian
+			// correction factor (because ultimately we look ath the density of the height and
+			// not the ratio)
+			// However, this correction factor is the same for all splits of a clade so we omit it
+			// here.
+
 			return localCCDLogDensity + pointEstimateLogDensity;
+		}
+	}
+
+	private getLogJacobianCorrection(
+		split: CladeSplit,
+		treeHeight: number,
+		olderChildHeight: number
+	) {
+		if (isRoot(split.parent)) {
+			// this is the root, there is no correction factor as we directly model the root height
+			return 0.0;
+		} else {
+			// this is not the root, we return the log of the abs determinant of the Jacobian
+			return -Math.log(treeHeight - olderChildHeight);
 		}
 	}
 }

@@ -8,6 +8,8 @@ export type InternalNodeToDraw = {
 	type: 'internal';
 	nr: number;
 	height: number;
+	cladeFingerprint: number;
+	splitFingerprint: number;
 	left: NodeToDraw;
 	right: NodeToDraw;
 	heightDistribution: Histogram;
@@ -16,6 +18,7 @@ export type InternalNodeToDraw = {
 export type LeafToDraw = {
 	type: 'leaf';
 	nr: number;
+	cladeFingerprint: number;
 	height: number;
 	label: string;
 };

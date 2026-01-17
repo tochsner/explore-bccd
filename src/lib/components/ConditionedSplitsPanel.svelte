@@ -52,15 +52,17 @@
 
 {#if (conditionedSplits && conditionedSplits.length > 0) || (conditionedHeights && conditionedHeights.length > 0)}
 	<div
-		class="m-4 flex items-center gap-3 overflow-x-auto rounded-lg border border-gray-400/10 bg-gray-50 p-3 shadow-md shadow-gray-200/30"
+		class="m-4 flex flex-col items-start gap-2 rounded-lg border border-gray-400/10 bg-gray-50 p-3 shadow-md shadow-gray-200/30"
 	>
 		<h3 class="text-accent shrink-0 text-sm font-semibold uppercase">Conditions:</h3>
 		<div class="flex gap-2">
 			{#each conditionedSplits as split, idx}
+				<!-- svelte-ignore a11y_click_events_have_key_events -->
+				<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 				<div
 					class="group relative flex cursor-pointer items-center gap-2 rounded-md border border-gray-400/20 bg-white px-3 py-2 shadow-sm transition-all hover:border-gray-400/40 hover:shadow-md"
 					onmouseenter={() => handleMouseEnter(split.nodeNr)}
-					onmouseleave={() => handleMouseLeave(split.nodeNr)}
+					onmouseleave={() => handleMouseLeave()}
 					onclick={() => handleMouseClick(split.nodeNr)}
 					role="complementary"
 				>
@@ -91,11 +93,14 @@
 				</div>
 			{/each}
 
+			<!-- svelte-ignore a11y_click_events_have_key_events -->
 			{#each conditionedHeights as split, idx}
+				<!-- svelte-ignore a11y_click_events_have_key_events -->
+				<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 				<div
 					class="group relative flex cursor-pointer items-center gap-2 rounded-md border border-gray-400/20 bg-white px-3 py-2 shadow-sm transition-all hover:border-gray-400/40 hover:shadow-md"
 					onmouseenter={() => handleMouseEnter(split.nodeNr)}
-					onmouseleave={() => handleMouseLeave(split.nodeNr)}
+					onmouseleave={() => handleMouseLeave()}
 					onclick={() => handleMouseClick(split.nodeNr)}
 					role="complementary"
 				>
@@ -126,5 +131,9 @@
 				</div>
 			{/each}
 		</div>
+		<p class="mt-2 text-xs text-gray-500">
+			<strong>Disclaimer:</strong> The conditioning feature is aimed at quick and easy exploration of
+			the posterior. Always run a proper MCMC run to confirm any findings.
+		</p>
 	</div>
 {/if}

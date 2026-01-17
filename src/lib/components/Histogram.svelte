@@ -16,7 +16,7 @@
 				fill: true,
 				borderColor: accentColor,
 				backgroundColor: accentColor,
-				tension: 0.5,
+				tension: 0.3,
 				showLine: false,
 				pointRadius: 0
 			}

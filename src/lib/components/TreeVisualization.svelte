@@ -17,9 +17,13 @@
 		exportSVG: (width: number, height: number) => string;
 	} = $props();
 
-	const { pointEstimate, selectedNodeDetails, hoveredNodeNr } = $derived(
-		globalState.getGlobalState()
-	);
+	const {
+		pointEstimate,
+		selectedNodeDetails,
+		hoveredNodeNr,
+		conditionedHeights,
+		conditionedSplits
+	} = $derived(globalState.getGlobalState());
 
 	let height = $state<number>();
 	let width = $state<number>();
@@ -111,20 +115,28 @@
 				context.fillStyle = 'black';
 				context.fillText(child.label, childX + 10, childY);
 			} else {
-				// render subtree
-
 				// render dot
-				if (selectedNode === child || hoveredNode === child) {
-					context.beginPath();
-					context.arc(childX, childY, 4, 0, Math.PI * 2);
-					context.fillStyle = 'black';
-					context.fill();
-				} else {
-					context.beginPath();
-					context.arc(childX, childY, 2, 0, Math.PI * 2);
-					context.fillStyle = 'black';
-					context.fill();
+
+				let dotColor = 'black';
+				if (conditionedHeights?.find((c) => c.cladeFingerprint === child?.cladeFingerprint)) {
+					// we have an active height condition for this node
+					dotColor = accentColor;
+				} else if (conditionedSplits?.find((c) => c.cladeFingerprint === child?.cladeFingerprint)) {
+					// we have an active split condition for this node
+					dotColor = accentColor;
 				}
+
+				let radiusSize = 3;
+				if (selectedNode === child || hoveredNode === child) {
+					radiusSize = 4;
+				}
+
+				context.beginPath();
+				context.arc(childX, childY, radiusSize, 0, Math.PI * 2);
+				context.fillStyle = dotColor;
+				context.fill();
+
+				// render subtree
 
 				renderNode(child.left, child);
 				renderNode(child.right, child);

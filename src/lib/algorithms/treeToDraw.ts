@@ -12,7 +12,7 @@ export type InternalNodeToDraw = {
 	splitFingerprint: number;
 	left: NodeToDraw;
 	right: NodeToDraw;
-	heightDistribution: Histogram;
+	heightDistribution: Histogram | null;
 };
 
 export type LeafToDraw = {
@@ -41,7 +41,7 @@ export type NodeDetails = {
 		localLogDensity: number;
 		reason: 'bestSplit' | 'conditionedOn';
 	};
-	heightDistribution: Histogram;
+	heightDistribution: Histogram | null;
 	alternativeSplits: {
 		fingerprint: number;
 		leftLabels: string[];

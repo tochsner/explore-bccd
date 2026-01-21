@@ -243,17 +243,20 @@
 			const histogramHeight = 70;
 
 			const histogramStartX =
-				(treeWidth * (treeTimeHeight - (child.heightDistribution.at(0)?.bucketStart || 0.0))) /
+				(treeWidth *
+					(treeTimeHeight - (child.heightDistribution.buckets.at(0)?.bucketStart || 0.0))) /
 					treeTimeHeight +
 				margin;
 			const histogramEndX =
 				(treeWidth *
 					(treeTimeHeight -
-						(child.heightDistribution.at(child.heightDistribution.length - 1)?.bucketEnd || 0.0))) /
+						(child.heightDistribution.buckets.at(child.heightDistribution.buckets.length - 1)
+							?.bucketEnd || 0.0))) /
 					treeTimeHeight +
 				margin;
 
-			const bucketWidth = (histogramEndX - histogramStartX) / child.heightDistribution.length;
+			const bucketWidth =
+				(histogramEndX - histogramStartX) / child.heightDistribution.buckets.length;
 
 			if (selectedNode === child) {
 				context.fillStyle = accentColor;
@@ -263,7 +266,7 @@
 			context.beginPath();
 			context.moveTo(histogramStartX, childY);
 
-			child.heightDistribution.forEach((bucket, index) => {
+			child.heightDistribution.buckets.forEach((bucket, index) => {
 				context.lineTo(
 					histogramStartX + index * bucketWidth,
 					childY - histogramHeight * bucket.normalizedDensity

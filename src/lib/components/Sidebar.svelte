@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { GlobalState } from '$lib/context/globalContext.svelte';
 	import { sendMessage } from '$lib/workers/tree-parser.worker';
+	import { formatNumber } from '$lib/utils/formatter';
 	import Histogram from './Histogram.svelte';
 	import HeightConditionModal from './HeightConditionModal.svelte';
 
@@ -104,13 +105,32 @@
 			<!-- age distribution -->
 
 			<div class="flex flex-col gap-1">
-				<h3 class="text-accent text-sm font-semibold uppercase">Age Distribution</h3>
+				<h3 class="text-accent text-sm font-semibold uppercase">Marginal Age Distribution</h3>
 				<span class="text-sm italic">(conditioned on topology)</span>
 
-				<Histogram histogram={heightDistribution} />
+				{#if heightDistribution}
+					<Histogram histogram={heightDistribution} />
+					<div class="mt-1 grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+						<div class="flex flex-col">
+							<span class="text-xs tracking-wide text-gray-500 uppercase">Marginal Mean</span>
+							<span class="font-semibold tabular-nums"
+								>{formatNumber(heightDistribution.mean, 4)}</span
+							>
+						</div>
+						<div class="flex flex-col">
+							<span class="text-xs tracking-wide text-gray-500 uppercase">Marginal 95% CI</span>
+							<span class="font-semibold tabular-nums"
+								>[{formatNumber(heightDistribution.credibleInterval.lower, 4)}, {formatNumber(
+									heightDistribution.credibleInterval.upper,
+									3
+								)}]</span
+							>
+						</div>
+					</div>
+				{/if}
 
 				<button
-					class="border-accent/10 hover:border-accent/40 cursor-pointer self-start rounded-md border bg-white px-3 py-[2px] text-sm transition"
+					class="border-accent/10 hover:border-accent/40 mt-3 cursor-pointer self-start rounded-md border bg-white px-3 py-[2px] text-sm transition"
 					onclick={() => (heightModalOpen = true)}
 				>
 					Condition on specific age

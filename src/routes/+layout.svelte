@@ -1,6 +1,11 @@
 <script>
 	import '../app.css';
 	let { children } = $props();
+
+	import { Chart } from 'chart.js';
+	import annotationPlugin from 'chartjs-plugin-annotation';
+
+	Chart.register(annotationPlugin);
 </script>
 
 <svelte:head>

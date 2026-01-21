@@ -303,7 +303,7 @@ export class BCCDPointEstimator {
 	}
 
 	private sampleHeightDistributions(treeToDraw: TreeToDraw) {
-		const numSamples = 30_000;
+		const numSamples = 50_000;
 
 		const heightsPerNode = new Map<number, [number, number][]>();
 		for (let i = 0; i < numSamples; i++) {
@@ -434,7 +434,7 @@ export class BCCDPointEstimator {
 			height,
 			left: child1,
 			right: child2,
-			heightDistribution: [],
+			heightDistribution: null,
 			cladeFingerprint: clade.fingerprint,
 			splitFingerprint: chosenSplit.fingerprint
 		};
